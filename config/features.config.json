@@ -1,0 +1,218 @@
+{
+  "features": {
+    "authentication": {
+      "enabled": true,
+      "twoFactor": false,
+      "socialLogin": false,
+      "emailVerification": true,
+      "passwordComplexity": {
+        "enabled": true,
+        "minLength": 8,
+        "requireUppercase": true,
+        "requireLowercase": true,
+        "requireNumbers": true,
+        "requireSpecialChars": true
+      },
+      "sessionTimeout": 3600000,
+      "rememberMe": true,
+      "maxSessions": 3,
+      "loginNotification": true
+    },
+    "attendance": {
+      "qrCode": {
+        "enabled": true,
+        "expirationTime": 300000,
+        "refreshInterval": 60000
+      },
+      "geolocation": {
+        "enabled": false,
+        "required": false,
+        "radius": 100
+      },
+      "selfCheckIn": true,
+      "lateThreshold": 15,
+      "earlyCheckOut": 30,
+      "autoCheckOut": {
+        "enabled": false,
+        "time": "18:00"
+      },
+      "allowBackdatedEntry": true,
+      "requireApproval": false,
+      "allowBulkMarking": true,
+      "attendanceStates": ["present", "late", "absent", "excused", "holiday"]
+    },
+    "analytics": {
+      "enabled": true,
+      "realTime": true,
+      "export": {
+        "pdf": true,
+        "excel": true,
+        "csv": true
+      },
+      "customReports": true,
+      "scheduledReports": true,
+      "dashboardWidgets": {
+        "attendanceOverview": true,
+        "monthlyTrends": true,
+        "topPerformers": true,
+        "departmentStats": true,
+        "sessionStats": true
+      },
+      "dataRetention": {
+        "enabled": true,
+        "days": 365
+      }
+    },
+    "notifications": {
+      "enabled": true,
+      "channels": {
+        "email": {
+          "enabled": true,
+          "templates": {
+            "sessionReminder": true,
+            "attendanceMarked": true,
+            "sessionCreated": true,
+            "reportGenerated": true,
+            "accountActivity": true
+          }
+        },
+        "inApp": {
+          "enabled": true,
+          "sound": true,
+          "desktop": true
+        },
+        "sms": {
+          "enabled": false,
+          "provider": "twilio"
+        },
+        "push": {
+          "enabled": false,
+          "provider": "firebase"
+        }
+      },
+      "timing": {
+        "sessionReminder": 86400000,
+        "reportSchedule": "weekly"
+      }
+    },
+    "ui": {
+      "darkMode": {
+        "enabled": true,
+        "default": "system",
+        "scheduled": false
+      },
+      "multiLanguage": {
+        "enabled": true,
+        "autoDetect": true,
+        "showSelector": true
+      },
+      "animations": {
+        "enabled": true,
+        "reducedMotion": true
+      },
+      "accessibility": {
+        "enabled": true,
+        "highContrast": true,
+        "keyboardNavigation": true,
+        "screenReaderSupport": true,
+        "fontSize": "adjustable"
+      },
+      "customization": {
+        "userThemes": false,
+        "layouts": ["default", "compact", "comfortable"],
+        "density": "comfortable"
+      }
+    },
+    "sessions": {
+      "recurring": true,
+      "templates": true,
+      "capacity": {
+        "enabled": true,
+        "waitlist": true
+      },
+      "categories": true,
+      "locations": true,
+      "virtualSessions": true,
+      "attachments": {
+        "enabled": true,
+        "maxSize": 10485760,
+        "maxFiles": 10,
+        "allowedTypes": ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "png"]
+      },
+      "reminders": {
+        "enabled": true,
+        "defaultTime": 86400000
+      }
+    },
+    "security": {
+      "encryption": {
+        "enabled": true,
+        "algorithm": "AES-256"
+      },
+      "audit": {
+        "enabled": true,
+        "logLevel": "info",
+        "retention": 90
+      },
+      "ipWhitelist": {
+        "enabled": false,
+        "addresses": []
+      },
+      "bruteForceProtection": {
+        "enabled": true,
+        "maxAttempts": 5,
+        "windowMs": 900000
+      },
+      "contentSecurityPolicy": {
+        "enabled": true,
+        "reportOnly": false
+      }
+    },
+    "integrations": {
+      "calendar": {
+        "enabled": false,
+        "providers": ["google", "outlook", "ical"]
+      },
+      "sso": {
+        "enabled": false,
+        "providers": ["saml", "oauth", "ldap"]
+      },
+      "webhooks": {
+        "enabled": true,
+        "events": ["session.created", "attendance.marked", "user.created"]
+      },
+      "api": {
+        "enabled": true,
+        "rateLimit": true,
+        "documentation": true
+      }
+    },
+    "modules": {
+      "admin": {
+        "dashboard": true,
+        "userManagement": true,
+        "sessionManagement": true,
+        "analytics": true,
+        "settings": true,
+        "audit": true,
+        "backup": true
+      },
+      "user": {
+        "dashboard": true,
+        "profile": true,
+        "attendance": true,
+        "sessions": true,
+        "analytics": true,
+        "downloads": true,
+        "notifications": true
+      }
+    }
+  },
+  "experimental": {
+    "faceRecognition": false,
+    "biometricAuth": false,
+    "aiAnalytics": false,
+    "predictiveAnalytics": false,
+    "voiceCommands": false
+  }
+}

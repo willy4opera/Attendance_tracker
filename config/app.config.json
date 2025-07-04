@@ -1,0 +1,103 @@
+{
+  "app": {
+    "name": "Attendance Tracker",
+    "version": "1.0.0",
+    "description": "Professional Attendance Management System",
+    "environment": "development",
+    "port": 3000,
+    "apiPort": 5000,
+    "timezone": "UTC",
+    "locale": "en-US",
+    "defaultLanguage": "en",
+    "supportedLanguages": ["en", "es", "fr", "de"],
+    "maintenance": {
+      "enabled": false,
+      "message": "System is under maintenance. Please check back later."
+    },
+    "security": {
+      "jwtSecret": "CHANGE_THIS_IN_PRODUCTION",
+      "jwtExpiresIn": "1h",
+      "refreshTokenExpiresIn": "7d",
+      "bcryptRounds": 10,
+      "maxLoginAttempts": 5,
+      "lockoutDuration": 900000,
+      "passwordMinLength": 8,
+      "requirePasswordChange": 90
+    },
+    "database": {
+      "host": "localhost",
+      "port": 5432,
+      "name": "attendance_tracker",
+      "username": "postgres",
+      "password": "CHANGE_THIS_IN_PRODUCTION",
+      "dialect": "postgres",
+      "logging": false,
+      "pool": {
+        "max": 5,
+        "min": 0,
+        "acquire": 30000,
+        "idle": 10000
+      }
+    },
+    "redis": {
+      "host": "localhost",
+      "port": 6379,
+      "password": "",
+      "db": 0,
+      "keyPrefix": "attendance:"
+    },
+    "email": {
+      "provider": "smtp",
+      "host": "smtp.gmail.com",
+      "port": 587,
+      "secure": false,
+      "auth": {
+        "user": "your-email@gmail.com",
+        "pass": "your-app-password"
+      },
+      "from": {
+        "name": "Attendance Tracker",
+        "email": "noreply@attendance-tracker.com"
+      }
+    },
+    "storage": {
+      "provider": "local",
+      "local": {
+        "uploadDir": "./uploads",
+        "maxFileSize": 10485760,
+        "allowedMimeTypes": [
+          "image/jpeg",
+          "image/png",
+          "image/gif",
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ]
+      },
+      "s3": {
+        "bucket": "",
+        "region": "",
+        "accessKeyId": "",
+        "secretAccessKey": ""
+      }
+    },
+    "logging": {
+      "level": "info",
+      "format": "json",
+      "directory": "./logs",
+      "maxFiles": 30,
+      "maxSize": "20m"
+    },
+    "cors": {
+      "origin": ["http://localhost:3000"],
+      "credentials": true,
+      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "allowedHeaders": ["Content-Type", "Authorization", "X-Requested-With"]
+    },
+    "rateLimit": {
+      "windowMs": 900000,
+      "max": 100,
+      "message": "Too many requests from this IP, please try again later."
+    }
+  }
+}

@@ -1,0 +1,119 @@
+# Dependencies
+node_modules/
+bower_components/
+package-lock.json
+yarn.lock
+
+# Production builds
+dist/
+build/
+out/
+.next/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+config/*.local.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.c9/
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+.coverage
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# Documentation
+docs/_build/
+docs/.vuepress/dist/
+
+# Misc
+.sass-cache/
+.connect.lock
+.lock-wscript
+.node_repl_history
+.yarn-integrity
+
+# Security
+*.pem
+*.key
+*.crt
+*.p12
+
+# Backup files
+*.backup
+*.bak
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Python (if using any Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+
+# Redis
+dump.rdb
+
+# PostgreSQL
+*.sql
+!migrations/*.sql
+
+# Custom
+TODO.md
+NOTES.md
+.secrets/

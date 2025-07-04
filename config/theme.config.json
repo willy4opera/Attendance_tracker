@@ -1,0 +1,264 @@
+{
+  "theme": {
+    "name": "default",
+    "mode": "light",
+    "colors": {
+      "primary": {
+        "main": "#1976d2",
+        "light": "#42a5f5",
+        "dark": "#1565c0",
+        "contrastText": "#ffffff"
+      },
+      "secondary": {
+        "main": "#dc004e",
+        "light": "#e33371",
+        "dark": "#9a0036",
+        "contrastText": "#ffffff"
+      },
+      "success": {
+        "main": "#4caf50",
+        "light": "#6fbf73",
+        "dark": "#357a38",
+        "contrastText": "#ffffff"
+      },
+      "error": {
+        "main": "#f44336",
+        "light": "#f6685e",
+        "dark": "#aa2e25",
+        "contrastText": "#ffffff"
+      },
+      "warning": {
+        "main": "#ff9800",
+        "light": "#ffac33",
+        "dark": "#b26a00",
+        "contrastText": "#000000"
+      },
+      "info": {
+        "main": "#2196f3",
+        "light": "#4dabf5",
+        "dark": "#1769aa",
+        "contrastText": "#ffffff"
+      },
+      "background": {
+        "default": "#f5f5f5",
+        "paper": "#ffffff",
+        "dark": "#121212"
+      },
+      "text": {
+        "primary": "rgba(0, 0, 0, 0.87)",
+        "secondary": "rgba(0, 0, 0, 0.6)",
+        "disabled": "rgba(0, 0, 0, 0.38)",
+        "hint": "rgba(0, 0, 0, 0.38)"
+      },
+      "divider": "rgba(0, 0, 0, 0.12)",
+      "action": {
+        "active": "rgba(0, 0, 0, 0.54)",
+        "hover": "rgba(0, 0, 0, 0.04)",
+        "selected": "rgba(0, 0, 0, 0.08)",
+        "disabled": "rgba(0, 0, 0, 0.26)",
+        "disabledBackground": "rgba(0, 0, 0, 0.12)"
+      }
+    },
+    "typography": {
+      "fontFamily": {
+        "primary": "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
+        "secondary": "'Open Sans', sans-serif",
+        "monospace": "'Monaco', 'Consolas', 'Courier New', monospace"
+      },
+      "fontSize": {
+        "xs": "0.75rem",
+        "sm": "0.875rem",
+        "base": "1rem",
+        "lg": "1.125rem",
+        "xl": "1.25rem",
+        "2xl": "1.5rem",
+        "3xl": "1.875rem",
+        "4xl": "2.25rem",
+        "5xl": "3rem",
+        "6xl": "3.75rem"
+      },
+      "fontWeight": {
+        "thin": 100,
+        "light": 300,
+        "regular": 400,
+        "medium": 500,
+        "semibold": 600,
+        "bold": 700,
+        "extrabold": 800,
+        "black": 900
+      },
+      "lineHeight": {
+        "none": 1,
+        "tight": 1.25,
+        "snug": 1.375,
+        "normal": 1.5,
+        "relaxed": 1.625,
+        "loose": 2
+      }
+    },
+    "spacing": {
+      "unit": 8,
+      "xs": 4,
+      "sm": 8,
+      "md": 16,
+      "lg": 24,
+      "xl": 32,
+      "2xl": 48,
+      "3xl": 64,
+      "4xl": 96
+    },
+    "borderRadius": {
+      "none": 0,
+      "sm": 2,
+      "base": 4,
+      "md": 6,
+      "lg": 8,
+      "xl": 12,
+      "2xl": 16,
+      "3xl": 24,
+      "full": 9999
+    },
+    "shadows": {
+      "none": "none",
+      "xs": "0 0 0 1px rgba(0, 0, 0, 0.05)",
+      "sm": "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+      "base": "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+      "md": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+      "lg": "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+      "xl": "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+      "2xl": "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+      "inner": "inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)"
+    },
+    "transitions": {
+      "duration": {
+        "shortest": 150,
+        "shorter": 200,
+        "short": 250,
+        "standard": 300,
+        "complex": 375,
+        "enteringScreen": 225,
+        "leavingScreen": 195
+      },
+      "easing": {
+        "easeInOut": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "easeOut": "cubic-bezier(0.0, 0, 0.2, 1)",
+        "easeIn": "cubic-bezier(0.4, 0, 1, 1)",
+        "sharp": "cubic-bezier(0.4, 0, 0.6, 1)"
+      }
+    },
+    "breakpoints": {
+      "xs": 0,
+      "sm": 600,
+      "md": 960,
+      "lg": 1280,
+      "xl": 1920
+    },
+    "zIndex": {
+      "mobileStepper": 1000,
+      "speedDial": 1050,
+      "appBar": 1100,
+      "drawer": 1200,
+      "modal": 1300,
+      "snackbar": 1400,
+      "tooltip": 1500
+    }
+  },
+  "layout": {
+    "sidebar": {
+      "width": 240,
+      "collapsedWidth": 64,
+      "position": "left",
+      "defaultState": "expanded",
+      "backgroundColor": "#ffffff",
+      "showToggle": true
+    },
+    "header": {
+      "height": 64,
+      "position": "fixed",
+      "backgroundColor": "#ffffff",
+      "showLogo": true,
+      "showSearch": true,
+      "showNotifications": true,
+      "showProfile": true
+    },
+    "footer": {
+      "show": true,
+      "height": 48,
+      "position": "relative",
+      "backgroundColor": "#f5f5f5",
+      "content": "© 2024 Attendance Tracker. All rights reserved."
+    },
+    "content": {
+      "padding": 24,
+      "maxWidth": 1200,
+      "centered": true
+    }
+  },
+  "branding": {
+    "logo": {
+      "light": "/assets/logo-light.svg",
+      "dark": "/assets/logo-dark.svg",
+      "width": 150,
+      "height": 40,
+      "alt": "Attendance Tracker Logo"
+    },
+    "favicon": {
+      "ico": "/assets/favicon.ico",
+      "png16": "/assets/favicon-16x16.png",
+      "png32": "/assets/favicon-32x32.png",
+      "appleTouchIcon": "/assets/apple-touch-icon.png"
+    },
+    "appName": "Attendance Tracker",
+    "shortName": "AT",
+    "appDescription": "Professional Attendance Management System",
+    "copyright": "© 2024 Your Company. All rights reserved.",
+    "socialLinks": {
+      "facebook": "",
+      "twitter": "",
+      "linkedin": "",
+      "github": ""
+    }
+  },
+  "components": {
+    "buttons": {
+      "variant": "contained",
+      "size": "medium",
+      "textTransform": "none",
+      "disableElevation": false,
+      "disableRipple": false
+    },
+    "inputs": {
+      "variant": "outlined",
+      "size": "medium",
+      "margin": "normal",
+      "fullWidth": true
+    },
+    "tables": {
+      "striped": true,
+      "hover": true,
+      "dense": false,
+      "stickyHeader": true,
+      "showBorder": true
+    },
+    "cards": {
+      "elevation": 1,
+      "variant": "elevation",
+      "square": false
+    },
+    "dialogs": {
+      "maxWidth": "sm",
+      "fullWidth": true,
+      "disableBackdropClick": false
+    },
+    "alerts": {
+      "variant": "standard",
+      "severity": "info",
+      "closeButton": true
+    }
+  },
+  "animations": {
+    "enabled": true,
+    "duration": "standard",
+    "easing": "easeInOut"
+  }
+}

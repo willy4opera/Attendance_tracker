@@ -1,0 +1,143 @@
+{
+  "api": {
+    "baseURL": "http://localhost:5000/api/v1",
+    "timeout": 30000,
+    "retry": {
+      "attempts": 3,
+      "delay": 1000,
+      "backoff": 2
+    },
+    "headers": {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    "endpoints": {
+      "auth": {
+        "login": "/auth/login",
+        "logout": "/auth/logout",
+        "refresh": "/auth/refresh",
+        "register": "/auth/register",
+        "verify": "/auth/verify",
+        "forgotPassword": "/auth/forgot-password",
+        "resetPassword": "/auth/reset-password",
+        "changePassword": "/auth/change-password"
+      },
+      "users": {
+        "base": "/users",
+        "list": "/users",
+        "create": "/users",
+        "get": "/users/:id",
+        "update": "/users/:id",
+        "delete": "/users/:id",
+        "search": "/users/search",
+        "bulk": "/users/bulk",
+        "import": "/users/import",
+        "export": "/users/export",
+        "activate": "/users/:id/activate",
+        "deactivate": "/users/:id/deactivate"
+      },
+      "sessions": {
+        "base": "/sessions",
+        "list": "/sessions",
+        "create": "/sessions",
+        "get": "/sessions/:id",
+        "update": "/sessions/:id",
+        "delete": "/sessions/:id",
+        "upcoming": "/sessions/upcoming",
+        "active": "/sessions/active",
+        "past": "/sessions/past",
+        "attendance": "/sessions/:id/attendance",
+        "attachments": "/sessions/:id/attachments",
+        "qrcode": "/sessions/:id/qrcode",
+        "clone": "/sessions/:id/clone"
+      },
+      "attendance": {
+        "base": "/attendance",
+        "mark": "/attendance/mark",
+        "update": "/attendance/:id",
+        "bulk": "/attendance/bulk",
+        "history": "/attendance/history",
+        "userHistory": "/attendance/user/:userId",
+        "sessionAttendance": "/attendance/session/:sessionId",
+        "export": "/attendance/export",
+        "stats": "/attendance/stats"
+      },
+      "analytics": {
+        "base": "/analytics",
+        "overview": "/analytics/overview",
+        "user": "/analytics/user/:userId",
+        "session": "/analytics/session/:sessionId",
+        "monthly": "/analytics/monthly",
+        "quarterly": "/analytics/quarterly",
+        "yearly": "/analytics/yearly",
+        "custom": "/analytics/custom",
+        "department": "/analytics/department/:departmentId",
+        "export": "/analytics/export",
+        "trends": "/analytics/trends"
+      },
+      "notifications": {
+        "base": "/notifications",
+        "list": "/notifications",
+        "read": "/notifications/:id/read",
+        "readAll": "/notifications/read-all",
+        "delete": "/notifications/:id",
+        "preferences": "/notifications/preferences"
+      },
+      "settings": {
+        "base": "/settings",
+        "general": "/settings/general",
+        "theme": "/settings/theme",
+        "notifications": "/settings/notifications",
+        "security": "/settings/security",
+        "export": "/settings/export",
+        "import": "/settings/import"
+      },
+      "uploads": {
+        "base": "/uploads",
+        "upload": "/uploads",
+        "download": "/uploads/:id",
+        "delete": "/uploads/:id"
+      }
+    },
+    "websocket": {
+      "url": "ws://localhost:5000",
+      "path": "/socket.io",
+      "transports": ["websocket", "polling"],
+      "reconnection": true,
+      "reconnectionAttempts": 5,
+      "reconnectionDelay": 1000,
+      "reconnectionDelayMax": 5000,
+      "timeout": 20000,
+      "autoConnect": true,
+      "events": {
+        "connect": "connect",
+        "disconnect": "disconnect",
+        "error": "error",
+        "attendanceUpdate": "attendance:update",
+        "sessionUpdate": "session:update",
+        "notification": "notification:new",
+        "userStatus": "user:status"
+      }
+    },
+    "pagination": {
+      "defaultPage": 1,
+      "defaultLimit": 20,
+      "maxLimit": 100
+    },
+    "responseFormat": {
+      "success": {
+        "status": "success",
+        "data": null,
+        "message": null
+      },
+      "error": {
+        "status": "error",
+        "error": {
+          "code": null,
+          "message": null,
+          "details": null
+        }
+      }
+    }
+  }
+}
