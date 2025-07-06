@@ -1,34 +1,117 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import Login from './pages/auth/Login'
+import Register from './pages/auth/Register'
+import DashboardLayout from './components/layout/DashboardLayout'
+import Dashboard from './pages/dashboard/Dashboard'
+import SessionList from './pages/sessions/SessionList'
 import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+// Placeholder components for other routes
+const Attendance = () => <div className="p-4"><h1 className="text-2xl">My Attendance Page</h1></div>
+const QRScanner = () => <div className="p-4"><h1 className="text-2xl">QR Scanner Page</h1></div>
+const Reports = () => <div className="p-4"><h1 className="text-2xl">Reports Page</h1></div>
+const Files = () => <div className="p-4"><h1 className="text-2xl">Files Page</h1></div>
+const Users = () => <div className="p-4"><h1 className="text-2xl">Users Management Page</h1></div>
+const Profile = () => <div className="p-4"><h1 className="text-2xl">Profile Page</h1></div>
+const Settings = () => <div className="p-4"><h1 className="text-2xl">Settings Page</h1></div>
 
+// Protected Route Wrapper
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const token = localStorage.getItem('accessToken')
+  if (!token) {
+    return <Navigate to="/login" replace />
+  }
+  return <>{children}</>
+}
+
+// Create router with future flags
+const router = createBrowserRouter(
+  [
+    {
+      path: '/login',
+      element: <Login />,
+    },
+    {
+      path: '/register',
+      element: <Register />,
+    },
+    {
+      path: '/',
+      element: (
+        <ProtectedRoute>
+          <DashboardLayout />
+        </ProtectedRoute>
+      ),
+      children: [
+        {
+          index: true,
+          element: <Navigate to="/dashboard" replace />,
+        },
+        {
+          path: 'dashboard',
+          element: <Dashboard />,
+        },
+        {
+          path: 'sessions',
+          element: <SessionList />,
+        },
+        {
+          path: 'sessions/create',
+          element: <CreateSession />,
+},
+{
+  path: 'sessions/create',
+  element: <CreateSession />,
+          path: 'sessions',
+          element: <SessionList />,
+        },
+        {
+          path: 'sessions/create',
+          element: <CreateSession />,
+        },
+        {
+          path: 'attendance',
+          element: <Attendance />,
+        },
+        {
+          path: 'qr-scanner',
+          element: <QRScanner />,
+        },
+        {
+          path: 'reports',
+          element: <Reports />,
+        },
+        {
+          path: 'files',
+          element: <Files />,
+        },
+        {
+          path: 'users',
+          element: <Users />,
+        },
+        {
+          path: 'profile',
+          element: <Profile />,
+        },
+        {
+          path: 'settings',
+          element: <Settings />,
+        },
+      ],
+    },
+  ],
+  {
+    future: {
+    },
+  }
+)
+
+function App() {
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   )
 }
 
