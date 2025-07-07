@@ -125,7 +125,7 @@
 
 1. **Clone the repository** 📥
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/willy4opera/Attendance_tracker.git
    cd Attendance_tracker
    ```
 
@@ -323,9 +323,8 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 🆘 Support
 
-- 📧 Email: support@attendancetracker.com
-- 💬 Discord: [Join our community](https://discord.gg/attendance)
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/attendance-tracker/issues)
+- 📧 Email: icare@williamsobi.com.ng
+- 🐛 Issues: [GitHub Issues](https://github.com/willy4opera/Attendance_tracker/issues)
 
 ## 🙏 Acknowledgments
 
@@ -335,8 +334,28 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 ---
 
 <div align="center">
-  <p>Made with ❤️ by the Attendance Tracker Team</p>
+  <p>Made with ❤️ by Williams Obi</p>
   <p>
-    <a href="https://github.com/yourusername/attendance-tracker">⭐ Star us on GitHub</a>
+    <a href="https://github.com/willy4opera/Attendance_tracker">⭐ Star us on GitHub</a>
+  </p>
+</div>
+
+## 👨‍💻 Developer
+
+<div align="center">
+  <h3>Williams Obi</h3>
+  <p>
+    <a href="mailto:icare@williamsobi.com.ng">
+      <img src="https://img.shields.io/badge/Email-icare@williamsobi.com.ng-D14836?style=for-the-badge&logo=gmail&logoColor=white" alt="Email" />
+    </a>
+    <a href="https://williamsobi.com.ng">
+      <img src="https://img.shields.io/badge/Website-williamsobi.com.ng-4285F4?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Website" />
+    </a>
+    <a href="tel:+2348030756350">
+      <img src="https://img.shields.io/badge/Phone-+234_803_075_6350-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" alt="Phone" />
+    </a>
+    <a href="https://github.com/willy4opera">
+      <img src="https://img.shields.io/badge/GitHub-willy4opera-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub" />
+    </a>
   </p>
 </div>
