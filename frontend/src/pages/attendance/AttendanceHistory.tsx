@@ -116,7 +116,7 @@ const AttendanceHistory: React.FC = () => {
 
   if (loading && attendanceRecords.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-4 bg-gray-200 rounded w-1/4"></div>
           <div className="space-y-3">
@@ -130,41 +130,41 @@ const AttendanceHistory: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Statistics Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm font-medium text-gray-600">Total Sessions</p>
-          <p className="text-2xl font-semibold text-gray-900">{stats.total}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <p className="text-xs sm:text-sm font-medium text-gray-600">Total Sessions</p>
+          <p className="text-xl sm:text-2xl font-semibold text-gray-900">{stats.total}</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm font-medium text-gray-600">Present</p>
-          <p className="text-2xl font-semibold text-green-600">{stats.present}</p>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <p className="text-xs sm:text-sm font-medium text-gray-600">Present</p>
+          <p className="text-xl sm:text-2xl font-semibold text-green-600">{stats.present}</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm font-medium text-gray-600">Late</p>
-          <p className="text-2xl font-semibold text-yellow-600">{stats.late}</p>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <p className="text-xs sm:text-sm font-medium text-gray-600">Late</p>
+          <p className="text-xl sm:text-2xl font-semibold text-yellow-600">{stats.late}</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm font-medium text-gray-600">Absent</p>
-          <p className="text-2xl font-semibold text-red-600">{stats.absent}</p>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <p className="text-xs sm:text-sm font-medium text-gray-600">Absent</p>
+          <p className="text-xl sm:text-2xl font-semibold text-red-600">{stats.absent}</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm font-medium text-gray-600">Attendance Rate</p>
-          <p className="text-2xl font-semibold text-blue-600">{stats.attendanceRate}%</p>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 col-span-2 sm:col-span-1">
+          <p className="text-xs sm:text-sm font-medium text-gray-600">Attendance Rate</p>
+          <p className="text-xl sm:text-2xl font-semibold text-blue-600">{stats.attendanceRate}%</p>
         </div>
       </div>
 
       {/* Filters and Export */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <div>
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 sm:gap-4">
+            <div className="w-full sm:w-auto">
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Status</option>
                 <option value="present">Present</option>
@@ -175,38 +175,38 @@ const AttendanceHistory: React.FC = () => {
               </select>
             </div>
             
-            <div>
+            <div className="w-full sm:w-auto">
               <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
               <input
                 type="date"
                 value={filterDateRange.startDate}
                 onChange={(e) => setFilterDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             
-            <div>
+            <div className="w-full sm:w-auto">
               <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
               <input
                 type="date"
                 value={filterDateRange.endDate}
                 onChange={(e) => setFilterDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
           
           <button
             onClick={exportToCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
           >
             <Download className="w-4 h-4" />
             Export CSV
           </button>
         </div>
 
-        {/* Attendance Table */}
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -267,6 +267,56 @@ const AttendanceHistory: React.FC = () => {
               ))}
             </tbody>
           </table>
+          
+          {attendanceRecords.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No attendance records found</p>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden space-y-4">
+          {attendanceRecords.map((record) => (
+            <div key={record.id} className="border border-gray-200 rounded-lg p-4 space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-medium text-gray-900">{record.session?.title}</h3>
+                  <div className="flex items-center text-sm text-gray-500 mt-1">
+                    <Calendar className="w-4 h-4 mr-1" />
+                    {new Date(record.session?.sessionDate || '').toLocaleDateString()}
+                  </div>
+                </div>
+                {getStatusBadge(record.status)}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-gray-500">Time:</span>
+                  <div className="flex items-center text-gray-900">
+                    <Clock className="w-3 h-3 mr-1" />
+                    {record.session?.startTime} - {record.session?.endTime}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-gray-500">Check In:</span>
+                  <p className="text-gray-900">
+                    {record.checkInTime ? new Date(record.checkInTime).toLocaleTimeString() : '-'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Check Out:</span>
+                  <p className="text-gray-900">
+                    {record.checkOutTime ? new Date(record.checkOutTime).toLocaleTimeString() : '-'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Method:</span>
+                  <p className="text-gray-900 capitalize">{record.markedVia?.replace('_', ' ') || '-'}</p>
+                </div>
+              </div>
+            </div>
+          ))}
           
           {attendanceRecords.length === 0 && (
             <div className="text-center py-12">

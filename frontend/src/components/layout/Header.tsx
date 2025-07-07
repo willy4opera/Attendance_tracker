@@ -26,15 +26,14 @@ export default function Header({ title, user }: HeaderProps) {
   return (
     <>
       <header 
-        className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-white shadow-sm"
-        style={{ backgroundColor: theme.colors.background.paper }}
+        className="flex items-center justify-between px-4 lg:px-8 py-3"
       >
         {/* Page Title */}
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: theme.colors.secondary }}>
+          <h1 className="text-xl lg:text-2xl font-bold" style={{ color: theme.colors.secondary }}>
             {title}
           </h1>
-          <p className="text-sm" style={{ color: theme.colors.text.secondary }}>
+          <p className="text-xs lg:text-sm" style={{ color: theme.colors.text.secondary }}>
             Welcome back, {user?.firstName}!
           </p>
         </div>
@@ -63,7 +62,7 @@ export default function Header({ title, user }: HeaderProps) {
               }}
             >
               <AiOutlineMail className="w-4 h-4" />
-              <span>Verify Email</span>
+              <span className="hidden sm:inline">Verify Email</span>
             </button>
           )}
 
@@ -72,7 +71,7 @@ export default function Header({ title, user }: HeaderProps) {
             className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
             style={{ color: theme.colors.text.primary }}
           >
-            <AiOutlineBell className="w-6 h-6" />
+            <AiOutlineBell className="w-5 h-5 lg:w-6 lg:h-6" />
             <span 
               className="absolute top-0 right-0 w-2 h-2 rounded-full"
               style={{ backgroundColor: theme.colors.error }}
@@ -81,7 +80,7 @@ export default function Header({ title, user }: HeaderProps) {
 
           {/* User Avatar */}
           <div 
-            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold cursor-pointer"
+            className="w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center text-white font-semibold cursor-pointer text-sm lg:text-base"
             style={{ backgroundColor: theme.colors.primary, color: theme.colors.secondary }}
           >
             {user?.firstName?.[0]?.toUpperCase()}{user?.lastName?.[0]?.toUpperCase()}

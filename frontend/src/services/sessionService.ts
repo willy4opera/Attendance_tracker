@@ -10,12 +10,21 @@ export interface SessionFilters {
 
 export interface Session {
   id: string;
+  _id?: string; // MongoDB ID
   title: string;
+  name?: string; // Alternative name field
   description?: string;
   sessionDate: string;
   startTime: string;
   endTime: string;
   facilitatorId: string;
+  facilitator?: {
+    id: string;
+    _id?: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
   maxAttendees?: number;
   status: 'scheduled' | 'active' | 'completed' | 'cancelled';
   meetingType: 'in-person' | 'online' | 'hybrid';
@@ -25,12 +34,9 @@ export interface Session {
   attendanceWindow?: number;
   createdAt: string;
   updatedAt: string;
-  facilitator?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
+  enrolledCount?: number;
+  capacity?: number;
+  attendanceCount?: number;
 }
 
 export interface SessionsResponse {
@@ -48,8 +54,8 @@ class SessionService {
   async getAllSessions(params?: {
     page?: number;
     limit?: number;
-    status?: string;
     search?: string;
+    status?: string;
     startDate?: string;
     endDate?: string;
   }): Promise<SessionsResponse> {
@@ -59,17 +65,6 @@ class SessionService {
     } catch (error) {
       const axiosError = error as AxiosError<{ message: string }>;
       throw new Error(axiosError.response?.data?.message || 'Failed to fetch sessions');
-    }
-  }
-
-  // Get a single session by ID
-  async getSession(id: string): Promise<Session> {
-    try {
-      const response = await api.get(`/sessions/${id}`);
-      return response.data.data.session;
-    } catch (error) {
-      const axiosError = error as AxiosError<{ message: string }>;
-      throw new Error(axiosError.response?.data?.message || 'Failed to fetch session');
     }
   }
 
@@ -85,9 +80,9 @@ class SessionService {
   }
 
   // Update a session
-  async updateSession(id: string, sessionData: Partial<Session>): Promise<Session> {
+  async updateSession(sessionId: string, sessionData: Partial<Session>): Promise<Session> {
     try {
-      const response = await api.put(`/sessions/${id}`, sessionData);
+      const response = await api.put(`/sessions/${sessionId}`, sessionData);
       return response.data.data.session;
     } catch (error) {
       const axiosError = error as AxiosError<{ message: string }>;
@@ -96,12 +91,46 @@ class SessionService {
   }
 
   // Delete a session
-  async deleteSession(id: string): Promise<void> {
+  async deleteSession(sessionId: string): Promise<void> {
     try {
-      await api.delete(`/sessions/${id}`);
+      await api.delete(`/sessions/${sessionId}`);
     } catch (error) {
       const axiosError = error as AxiosError<{ message: string }>;
       throw new Error(axiosError.response?.data?.message || 'Failed to delete session');
+    }
+  }
+
+  // Get session by ID
+  async getSessionById(sessionId: string): Promise<Session> {
+    try {
+      const response = await api.get(`/sessions/${sessionId}`);
+      return response.data.data.session;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message: string }>;
+      throw new Error(axiosError.response?.data?.message || 'Failed to fetch session');
+    }
+  }
+
+  // Format session time for display
+  formatSessionTime(session: Session): string {
+    const date = new Date(session.sessionDate);
+    const dateStr = date.toLocaleDateString();
+    return `${dateStr} ${session.startTime} - ${session.endTime}`;
+  }
+
+  // Get session status based on current time
+  getSessionStatus(session: Session): 'active' | 'upcoming' | 'past' {
+    const now = new Date();
+    const sessionDate = new Date(session.sessionDate);
+    const startTime = new Date(`${session.sessionDate.split('T')[0]}T${session.startTime}`);
+    const endTime = new Date(`${session.sessionDate.split('T')[0]}T${session.endTime}`);
+
+    if (now >= startTime && now <= endTime) {
+      return 'active';
+    } else if (now < startTime) {
+      return 'upcoming';
+    } else {
+      return 'past';
     }
   }
 

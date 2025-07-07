@@ -7,11 +7,17 @@ import Dashboard from './pages/dashboard/Dashboard'
 import SessionList from './pages/sessions/SessionList'
 import CreateSession from './pages/sessions/CreateSession'
 import UserManagement from './pages/users/UserManagement'
-import { AttendanceDashboard } from './pages/attendance'
+import { 
+  AttendanceDashboard, 
+  QRCodeScanner, 
+  QRCodeGenerator,
+  SessionAttendance,
+  AttendanceHistory,
+  MarkAttendance 
+} from './pages/attendance'
 import './App.css'
 
 // Placeholder components for other routes
-const QRScanner = () => <div className="p-4"><h1 className="text-2xl">QR Scanner Page</h1></div>
 const Reports = () => <div className="p-4"><h1 className="text-2xl">Reports Page</h1></div>
 const Files = () => <div className="p-4"><h1 className="text-2xl">Files Page</h1></div>
 const Profile = () => <div className="p-4"><h1 className="text-2xl">Profile Page</h1></div>
@@ -66,8 +72,24 @@ const router = createBrowserRouter(
           element: <AttendanceDashboard />,
         },
         {
+          path: 'attendance/history',
+          element: <AttendanceHistory />,
+        },
+        {
+          path: 'attendance/mark/:sessionId',
+          element: <MarkAttendance />,
+        },
+        {
+          path: 'attendance/session/:sessionId',
+          element: <SessionAttendance />,
+        },
+        {
           path: 'qr-scanner',
-          element: <QRScanner />,
+          element: <QRCodeScanner />,
+        },
+        {
+          path: 'qr-generator/:sessionId',
+          element: <QRCodeGenerator />,
         },
         {
           path: 'reports',

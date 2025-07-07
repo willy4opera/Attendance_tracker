@@ -160,7 +160,7 @@ const MarkAttendance: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Session Selection */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Mark Attendance</h3>
         <div className="space-y-4">
           <div>
@@ -191,7 +191,7 @@ const MarkAttendance: React.FC = () => {
               <button
                 onClick={saveAttendance}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 {loading ? 'Saving...' : 'Save Attendance'}
@@ -201,8 +201,8 @@ const MarkAttendance: React.FC = () => {
 
           <div className="p-6">
             {/* Search and Bulk Actions */}
-            <div className="flex flex-wrap items-center gap-4 mb-6">
-              <div className="flex-1 min-w-[300px]">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
+              <div className="w-full sm:flex-1 sm:min-w-[300px]">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
@@ -215,7 +215,7 @@ const MarkAttendance: React.FC = () => {
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                 <select
                   value={bulkStatus}
                   onChange={(e) => setBulkStatus(e.target.value)}

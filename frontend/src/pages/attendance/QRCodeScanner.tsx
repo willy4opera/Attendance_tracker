@@ -1,19 +1,35 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, X, CheckCircle, AlertCircle, QrCode } from 'lucide-react';
-import attendanceService from '../../services/attendanceService';
+import { Camera, X, CheckCircle, AlertCircle, QrCode, Loader2, Shield } from 'lucide-react';
+import jsQR from 'jsqr';
+import qrcodeService from '../../services/qrcodeService';
 import { showErrorToast, showSuccessToast } from '../../utils/toastHelpers';
 import theme from '../../config/theme';
+
+interface RecentScan {
+  id: number;
+  timestamp: string;
+  sessionTitle: string;
+  status: 'success' | 'error';
+  message?: string;
+}
 
 const QRCodeScanner: React.FC = () => {
   const [scanning, setScanning] = useState(false);
   const [manualCode, setManualCode] = useState('');
-  const [recentScans, setRecentScans] = useState<any[]>([]);
+  const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
   const [showCamera, setShowCamera] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isSecureContext, setIsSecureContext] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Check if we're in a secure context
+    setIsSecureContext(window.isSecureContext);
+    
     // Load recent scans from localStorage
     const saved = localStorage.getItem('recentAttendanceScans');
     if (saved) {
@@ -26,10 +42,31 @@ const QRCodeScanner: React.FC = () => {
     };
   }, []);
 
+  const checkCameraAvailability = () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (!window.isSecureContext) {
+        return 'Camera access requires HTTPS. Please use manual code entry or access this site via HTTPS.';
+      }
+      return 'Your browser does not support camera access. Please use manual code entry.';
+    }
+    return null;
+  };
+
   const startCamera = async () => {
+    const error = checkCameraAvailability();
+    if (error) {
+      setCameraError(error);
+      showErrorToast(error);
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       });
       
       if (videoRef.current) {
@@ -37,12 +74,40 @@ const QRCodeScanner: React.FC = () => {
         streamRef.current = stream;
         setShowCamera(true);
         setScanning(true);
+        setCameraError(null);
         
-        // Start scanning for QR codes
-        scanQRCode();
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+          // Start scanning for QR codes
+          scanQRCode();
+        };
       }
     } catch (error) {
-      showErrorToast(new Error('Failed to access camera. Please check permissions.').message);
+      console.error('Camera error:', error);
+      let errorMessage = 'Failed to access camera. ';
+      
+      if (error instanceof DOMException) {
+        switch (error.name) {
+          case 'NotAllowedError':
+            errorMessage += 'Please allow camera permissions and try again.';
+            break;
+          case 'NotFoundError':
+            errorMessage += 'No camera found on this device.';
+            break;
+          case 'NotReadableError':
+            errorMessage += 'Camera is already in use by another application.';
+            break;
+          case 'OverconstrainedError':
+            errorMessage += 'Camera does not support the requested configuration.';
+            break;
+          default:
+            errorMessage += 'Please check camera permissions and try again.';
+        }
+      }
+      
+      setCameraError(errorMessage);
+      showErrorToast(errorMessage);
     }
   };
 
@@ -51,8 +116,13 @@ const QRCodeScanner: React.FC = () => {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
     setShowCamera(false);
     setScanning(false);
+    setCameraError(null);
   };
 
   const scanQRCode = () => {
@@ -67,31 +137,47 @@ const QRCodeScanner: React.FC = () => {
       canvas.height = video.videoHeight;
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Here you would integrate with a QR code scanning library like qr-scanner or jsQR
-      // For now, we'll simulate the scanning process
-      // In production, you would use: const code = jsQR(imageData.data, imageData.width, imageData.height);
-      
-      // Simulated QR code detection
-      // You would replace this with actual QR code scanning logic
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert',
+      });
+
+      if (code && code.data) {
+        handleQRCodeDetected(code.data);
+        return;
+      }
     }
 
     if (scanning) {
-      requestAnimationFrame(scanQRCode);
+      animationFrameRef.current = requestAnimationFrame(scanQRCode);
     }
   };
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualCode.trim()) return;
+    if (!manualCode.trim() || isProcessing) return;
 
+    setIsProcessing(true);
     try {
-      const result = await attendanceService.markAttendanceViaQR(manualCode);
+      // Try to parse as JSON first (QR data)
+      let qrData = manualCode;
+      try {
+        JSON.parse(manualCode);
+      } catch {
+        // If not JSON, treat as attendance token
+        qrData = JSON.stringify({
+          type: 'attendance_token',
+          token: manualCode
+        });
+      }
+
+      const result = await qrcodeService.scanQRCode(qrData);
       
       // Add to recent scans
-      const scan = {
+      const scan: RecentScan = {
         id: Date.now(),
         timestamp: new Date().toISOString(),
-        sessionTitle: result.session?.title || 'Unknown Session',
+        sessionTitle: result.data.session?.title || 'Unknown Session',
         status: 'success'
       };
       
@@ -99,23 +185,43 @@ const QRCodeScanner: React.FC = () => {
       setRecentScans(updatedScans);
       localStorage.setItem('recentAttendanceScans', JSON.stringify(updatedScans));
       
-      showSuccessToast('Attendance marked successfully!');
+      showSuccessToast(result.message || 'Attendance marked successfully!');
       setManualCode('');
     } catch (error) {
-      showErrorToast((error as Error).message || "An error occurred");
+      const errorMessage = (error as Error).message || 'Failed to mark attendance';
+      showErrorToast(errorMessage);
+      
+      // Add failed scan to history
+      const scan: RecentScan = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        sessionTitle: 'Failed',
+        status: 'error',
+        message: errorMessage
+      };
+      
+      const updatedScans = [scan, ...recentScans].slice(0, 5);
+      setRecentScans(updatedScans);
+      localStorage.setItem('recentAttendanceScans', JSON.stringify(updatedScans));
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleQRCodeDetected = async (qrData: string) => {
+    if (isProcessing) return;
+    
+    setIsProcessing(true);
+    stopCamera();
+    
     try {
-      stopCamera();
-      const result = await attendanceService.markAttendanceViaQR(qrData);
+      const result = await qrcodeService.scanQRCode(qrData);
       
       // Add to recent scans
-      const scan = {
+      const scan: RecentScan = {
         id: Date.now(),
         timestamp: new Date().toISOString(),
-        sessionTitle: result.session?.title || 'Unknown Session',
+        sessionTitle: result.data.session?.title || 'Unknown Session',
         status: 'success'
       };
       
@@ -123,26 +229,45 @@ const QRCodeScanner: React.FC = () => {
       setRecentScans(updatedScans);
       localStorage.setItem('recentAttendanceScans', JSON.stringify(updatedScans));
       
-      showSuccessToast('Attendance marked successfully!');
+      showSuccessToast(result.message || 'Attendance marked successfully!');
     } catch (error) {
-      showErrorToast((error as Error).message || "An error occurred");
+      const errorMessage = (error as Error).message || 'Failed to mark attendance';
+      showErrorToast(errorMessage);
       
       // Add failed scan to history
-      const scan = {
+      const scan: RecentScan = {
         id: Date.now(),
         timestamp: new Date().toISOString(),
-        sessionTitle: 'Failed to mark attendance',
-        status: 'error'
+        sessionTitle: 'Failed',
+        status: 'error',
+        message: errorMessage
       };
       
       const updatedScans = [scan, ...recentScans].slice(0, 5);
       setRecentScans(updatedScans);
       localStorage.setItem('recentAttendanceScans', JSON.stringify(updatedScans));
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   return (
     <div className="space-y-6">
+      {/* Security Warning */}
+      {!isSecureContext && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Shield className="w-5 h-5 text-amber-600 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-amber-900 mb-1">Secure Connection Required</h4>
+              <p className="text-sm text-amber-800">
+                Camera access requires HTTPS. Please use manual code entry or access this site via a secure connection.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* QR Scanner Options */}
       <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
         <div className="p-6">
@@ -154,29 +279,42 @@ const QRCodeScanner: React.FC = () => {
               <h4 className="text-sm font-medium text-black">Scan with Camera</h4>
               
               {!showCamera ? (
-                <button
-                  onClick={startCamera}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-8 border-2 border-dashed rounded-lg transition-all duration-200 hover:shadow-md"
-                  style={{ 
-                    borderColor: theme.colors.primary,
-                    backgroundColor: theme.colors.primary + '10'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = theme.colors.primary + '20';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = theme.colors.primary + '10';
-                  }}
-                >
-                  <Camera className="w-8 h-8" style={{ color: theme.colors.primary }} />
-                  <span className="text-black font-medium">Click to start camera</span>
-                </button>
+                <div>
+                  <button
+                    onClick={startCamera}
+                    disabled={isProcessing || !isSecureContext}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-8 border-2 border-dashed rounded-lg transition-all duration-200 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ 
+                      borderColor: theme.colors.primary,
+                      backgroundColor: theme.colors.primary + '10'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isProcessing && isSecureContext) {
+                        e.currentTarget.style.backgroundColor = theme.colors.primary + '20';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = theme.colors.primary + '10';
+                    }}
+                  >
+                    <Camera className="w-8 h-8" style={{ color: theme.colors.primary }} />
+                    <span className="text-black font-medium">
+                      {!isSecureContext ? 'Camera Unavailable (HTTPS Required)' : 'Click to start camera'}
+                    </span>
+                  </button>
+                  {cameraError && (
+                    <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-800">{cameraError}</p>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="relative">
                   <video
                     ref={videoRef}
                     autoPlay
                     playsInline
+                    muted
                     className="w-full rounded-lg"
                   />
                   <canvas
@@ -192,6 +330,11 @@ const QRCodeScanner: React.FC = () => {
                   <div className="absolute bottom-2 left-2 right-2 bg-black bg-opacity-50 text-white p-2 rounded text-sm text-center">
                     Position QR code within the frame
                   </div>
+                  {isProcessing && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+                      <Loader2 className="w-8 h-8 text-white animate-spin" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -206,8 +349,9 @@ const QRCodeScanner: React.FC = () => {
                     type="text"
                     value={manualCode}
                     onChange={(e) => setManualCode(e.target.value)}
-                    placeholder="Enter attendance code"
-                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors"
+                    placeholder="Enter attendance code or QR data"
+                    disabled={isProcessing}
+                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors disabled:opacity-50"
                     style={{ 
                       borderColor: '#e5e7eb',
                       focusBorderColor: theme.colors.primary 
@@ -220,14 +364,14 @@ const QRCodeScanner: React.FC = () => {
                     }}
                   />
                   <p className="mt-1 text-xs text-gray-500">
-                    Enter the code displayed with the QR code
+                    Enter the code displayed with the QR code or the full QR data
                   </p>
                 </div>
                 
                 <button
                   type="submit"
-                  disabled={!manualCode.trim()}
-                  className="w-full px-4 py-2 text-black font-medium rounded-md transition-all duration-200 disabled:opacity-50"
+                  disabled={!manualCode.trim() || isProcessing}
+                  className="w-full px-4 py-2 text-black font-medium rounded-md transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
                   style={{ 
                     backgroundColor: theme.colors.primary,
                     color: theme.colors.secondary
@@ -241,7 +385,14 @@ const QRCodeScanner: React.FC = () => {
                     e.currentTarget.style.backgroundColor = theme.colors.primary;
                   }}
                 >
-                  Submit Code
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Submit Code'
+                  )}
                 </button>
               </form>
             </div>
@@ -264,6 +415,11 @@ const QRCodeScanner: React.FC = () => {
               <li>Your attendance will be marked automatically</li>
               <li>You'll receive a confirmation once successful</li>
             </ol>
+            {!isSecureContext && (
+              <p className="text-sm text-amber-700 mt-2">
+                <strong>Note:</strong> Camera scanning requires HTTPS. You can still use manual code entry.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -293,6 +449,9 @@ const QRCodeScanner: React.FC = () => {
                       <p className="text-sm text-gray-500">
                         {new Date(scan.timestamp).toLocaleString()}
                       </p>
+                      {scan.message && (
+                        <p className="text-sm text-red-600 mt-1">{scan.message}</p>
+                      )}
                     </div>
                   </div>
                 </div>

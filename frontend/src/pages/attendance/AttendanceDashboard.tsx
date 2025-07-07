@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, TrendingUp, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, Users, TrendingUp, CheckCircle, XCircle, AlertCircle, Menu, X } from 'lucide-react';
 import attendanceService from '../../services/attendanceService';
 import type { AttendanceRecord, TodayStats } from '../../services/attendanceService';
 import { useAuth } from '../../contexts/useAuth';
@@ -16,6 +16,7 @@ const AttendanceDashboard: React.FC = () => {
   const [todayStats, setTodayStats] = useState<TodayStats | null>(null);
   const [recentAttendance, setRecentAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -40,188 +41,230 @@ const AttendanceDashboard: React.FC = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'present':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
+        return <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />;
       case 'late':
-        return <AlertCircle className="w-5 h-5 text-yellow-500" />;
+        return <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />;
       case 'absent':
-        return <XCircle className="w-5 h-5 text-red-500" />;
+        return <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />;
       case 'excused':
-        return <AlertCircle className="w-5 h-5 text-blue-500" />;
+        return <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />;
       default:
-        return <Clock className="w-5 h-5 text-gray-500" />;
+        return <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />;
     }
   };
 
-  const renderOverview = () => (
-    <div className="space-y-6">
-      {/* Today's Statistics */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-lg shadow p-6 animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-              <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-            </div>
-          ))}
-        </div>
-      ) : todayStats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Today's Sessions</p>
-                <p className="text-2xl font-semibold text-black">{todayStats.totalSessions}</p>
-              </div>
-              <Calendar className="w-8 h-8" style={{ color: theme.colors.primary }} />
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Attended</p>
-                <p className="text-2xl font-semibold text-black">{todayStats.attendedSessions}</p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-500" />
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Attendance Rate</p>
-                <p className="text-2xl font-semibold text-black">{todayStats.attendancePercentage}%</p>
-              </div>
-              <TrendingUp className="w-8 h-8" style={{ color: theme.colors.primary }} />
-            </div>
-          </div>
-        </div>
-      )}
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'present': return 'text-green-600 bg-green-50';
+      case 'late': return 'text-yellow-600 bg-yellow-50';
+      case 'absent': return 'text-red-600 bg-red-50';
+      case 'excused': return 'text-blue-600 bg-blue-50';
+      default: return 'text-gray-600 bg-gray-50';
+    }
+  };
 
-      {/* Recent Attendance */}
-      <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
-        <div className="px-6 py-4 border-b border-gray-200" style={{ borderBottomColor: theme.colors.primary + '30' }}>
-          <h3 className="text-lg font-medium text-black">Recent Attendance</h3>
-        </div>
-        <div className="p-6">
-          {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-full"></div>
-                </div>
-              ))}
-            </div>
-          ) : recentAttendance && recentAttendance.length > 0 ? (
-            <div className="space-y-4">
-              {recentAttendance.map((record) => (
-                <div key={record.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center space-x-4">
-                    {getStatusIcon(record.status)}
-                    <div>
-                      <p className="font-medium text-black">{record.sessionTitle || record.session?.title}</p>
-                      <p className="text-sm text-gray-500">
-                        {new Date(record.date || record.session?.sessionDate || '').toLocaleDateString()} {record.time ? record.time : ''} 
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`px-3 py-1 text-xs font-medium rounded-full ${
-                    record.status === 'present' ? 'bg-green-100 text-green-800' :
-                    record.status === 'late' ? 'bg-yellow-100 text-yellow-800' :
-                    record.status === 'absent' ? 'bg-red-100 text-red-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-center py-8">No recent attendance records</p>
-          )}
-        </div>
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: TrendingUp },
+    { id: 'scanner', label: 'QR Scanner', icon: CheckCircle },
+    { id: 'history', label: 'My History', icon: Clock },
+    ...(user?.role === 'admin' || user?.role === 'moderator' 
+      ? [
+          { id: 'sessions', label: 'Session Attendance', icon: Users },
+          { id: 'mark', label: 'Mark Attendance', icon: Calendar }
+        ] 
+      : [])
+  ];
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    setMobileMenuOpen(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div 
+          className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2"
+          style={{ borderColor: theme.colors.primary }}
+        />
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-black">Attendance Management</h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile Menu Button */}
+      <div className="lg:hidden bg-white shadow-sm p-4 flex justify-between items-center">
+        <h1 className="text-lg font-semibold">Attendance Dashboard</h1>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 rounded-md hover:bg-gray-100"
+        >
+          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === 'overview'
-                ? `border-[${theme.colors.primary}] text-black`
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-            style={activeTab === 'overview' ? { borderBottomColor: theme.colors.primary } : {}}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === 'history'
-                ? `border-[${theme.colors.primary}] text-black`
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-            style={activeTab === 'history' ? { borderBottomColor: theme.colors.primary } : {}}
-          >
-            My Attendance
-          </button>
-          {(user?.role === 'admin' || user?.role === 'moderator') && (
-            <>
-              <button
-                onClick={() => setActiveTab('session-attendance')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'session-attendance'
-                    ? `border-[${theme.colors.primary}] text-black`
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-                style={activeTab === 'session-attendance' ? { borderBottomColor: theme.colors.primary } : {}}
-              >
-                Session Attendance
-              </button>
-              <button
-                onClick={() => setActiveTab('mark-attendance')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'mark-attendance'
-                    ? `border-[${theme.colors.primary}] text-black`
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-                style={activeTab === 'mark-attendance' ? { borderBottomColor: theme.colors.primary } : {}}
-              >
-                Mark Attendance
-              </button>
-            </>
-          )}
-          <button
-            onClick={() => setActiveTab('qr-scanner')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === 'qr-scanner'
-                ? `border-[${theme.colors.primary}] text-black`
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-            style={activeTab === 'qr-scanner' ? { borderBottomColor: theme.colors.primary } : {}}
-          >
-            QR Scanner
-          </button>
-        </nav>
+      <div className={`${mobileMenuOpen ? 'block' : 'hidden'} lg:block bg-white shadow-sm`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex flex-col lg:flex-row lg:space-x-8 py-2 lg:py-0">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`
+                    flex items-center space-x-2 px-3 py-3 lg:py-4 text-sm font-medium
+                    border-b-2 lg:border-b-2 w-full lg:w-auto text-left
+                    transition-colors duration-200
+                    ${activeTab === tab.id 
+                      ? 'text-black' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }
+                  `}
+                  style={{
+                    borderBottomColor: activeTab === tab.id ? theme.colors.primary : undefined
+                  }}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
       </div>
 
-      {/* Tab Content */}
-      <div>
-        {activeTab === 'overview' && renderOverview()}
+      {/* Content Area */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        {activeTab === 'overview' && (
+          <>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-600">Total Sessions</p>
+                    <p className="text-xl sm:text-2xl font-bold mt-1">
+                      {todayStats?.totalSessions || 0}
+                    </p>
+                  </div>
+                  <Calendar 
+                    className="w-8 h-8 sm:w-12 sm:h-12 opacity-20"
+                    style={{ color: theme.colors.primary }}
+                  />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-600">Attended</p>
+                    <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">
+                      {todayStats?.attendedSessions || 0}
+                    </p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 sm:w-12 sm:h-12 text-green-500 opacity-20" />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-600">Upcoming</p>
+                    <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-1">
+                      {todayStats?.upcomingSessions || 0}
+                    </p>
+                  </div>
+                  <Clock className="w-8 h-8 sm:w-12 sm:h-12 text-blue-500 opacity-20" />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-600">Attendance Rate</p>
+                    <p className="text-xl sm:text-2xl font-bold mt-1" style={{ color: theme.colors.primary }}>
+                      {todayStats?.attendancePercentage || 0}%
+                    </p>
+                  </div>
+                  <TrendingUp 
+                    className="w-8 h-8 sm:w-12 sm:h-12 opacity-20"
+                    style={{ color: theme.colors.primary }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Attendance */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900">Recent Attendance</h2>
+              </div>
+              
+              {recentAttendance.length === 0 ? (
+                <div className="px-4 sm:px-6 py-8 text-center text-gray-500">
+                  No attendance records found
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Session
+                        </th>
+                        <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date
+                        </th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Check-in Time
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {recentAttendance.map((record) => (
+                        <tr key={record.id} className="hover:bg-gray-50">
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {record.session?.title || 'Unknown Session'}
+                              </div>
+                              <div className="text-xs text-gray-500 sm:hidden">
+                                {new Date(record.session?.sessionDate || record.createdAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(record.session?.sessionDate || record.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(record.status)}`}>
+                              {getStatusIcon(record.status)}
+                              <span className="ml-1 capitalize">{record.status}</span>
+                            </span>
+                          </td>
+                          <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {record.checkInTime ? new Date(record.checkInTime).toLocaleTimeString() : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'scanner' && <QRCodeScanner />}
         {activeTab === 'history' && <AttendanceHistory />}
-        {activeTab === 'session-attendance' && <SessionAttendance />}
-        {activeTab === 'mark-attendance' && <MarkAttendance />}
-        {activeTab === 'qr-scanner' && <QRCodeScanner />}
+        {activeTab === 'sessions' && <SessionAttendance />}
+        {activeTab === 'mark' && <MarkAttendance />}
       </div>
     </div>
   );

@@ -47,13 +47,17 @@ export default function DashboardLayout({ title = 'Dashboard' }: DashboardLayout
       <Sidebar user={user} onLogout={handleLogout} />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-64">
-        {/* Header */}
-        <Header title={title} user={user} />
+      <div className="flex-1 flex flex-col lg:ml-64 min-h-screen">
+        {/* Header - Full width with minimal padding */}
+        <div className="bg-white shadow-sm" style={{ backgroundColor: theme.colors.background.paper }}>
+          <Header title={title} user={user} />
+        </div>
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          <Outlet context={{ user }} />
+        {/* Page Content - Centered with max width */}
+        <main className="flex-1 overflow-y-auto" style={{ backgroundColor: theme.colors.background.default }}>
+          <div className="max-w-7xl mx-auto w-full">
+            <Outlet context={{ user }} />
+          </div>
         </main>
       </div>
     </div>

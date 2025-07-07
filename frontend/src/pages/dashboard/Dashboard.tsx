@@ -143,7 +143,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 lg:px-6 py-4 lg:py-6">
+    <div className="space-y-4">
       {/* Welcome Section */}
       <div className="bg-white rounded-lg p-6 shadow-sm" style={{ backgroundColor: theme.colors.background.paper }}>
         <h2 className="text-2xl font-bold mb-2" style={{ color: theme.colors.secondary }}>
@@ -235,6 +236,7 @@ export default function Dashboard() {
             <p>No recent activity to display</p>
           </div>
         </div>
+    </div>
       </div>
     </div>
   )

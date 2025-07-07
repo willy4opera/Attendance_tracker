@@ -137,7 +137,7 @@ class AttendanceService {
   // Mark attendance via QR code
   async markAttendanceViaQR(qrData: string): Promise<AttendanceRecord> {
     try {
-      const response = await api.post('/attendance/qr-scan', { qrData });
+      const response = await api.post('/qrcode/scan', { qrData });
       return response.data.data.attendance;
     } catch (error) {
       const axiosError = error as AxiosError<{ message: string }>;
