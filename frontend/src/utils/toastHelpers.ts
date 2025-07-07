@@ -137,3 +137,13 @@ export const dismissToast = (toastId?: string) => {
     toast.dismiss()
   }
 }
+
+// Aliases for backward compatibility
+export const showErrorToast = toastError
+export const showSuccessToast = toastSuccess
+export const showWarningToast = toastWarning
+export const showInfoToast = toastInfo
+
+// Generic toast function for backward compatibility
+export const showToast = toastInfo
+

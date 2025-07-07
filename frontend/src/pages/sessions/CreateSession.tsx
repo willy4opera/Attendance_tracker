@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { sessionService } from '../../services/session.service';
-import { toastSuccess, toastError } from '../../utils/toast';
+import sessionService from '../../services/sessionService';
+import { toastSuccess, toastError } from '../../utils/toastHelpers';
 import { useAuth } from '../../contexts/useAuth';
 
 interface SessionFormData {

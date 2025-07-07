@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/useAuth';
-import sessionService, { type Session, type SessionFilters } from '../../services/sessionService';
-import { toastError } from '../../utils/toastHelpers';
+import { sessionService } from '../../services/session.service';
+import type { Session, SessionFilters } from '../../services/session.service';
+import { toastError } from '../../utils/toast';
 import ViewToggle from '../../components/common/ViewToggle';
 import { useViewMode } from '../../hooks/useViewMode';
 import { 
@@ -31,12 +32,6 @@ const SessionList: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const isAdminOrModerator = user?.role === 'admin' || user?.role === 'moderator';
-  // Debug: Log user information
-  console.log("Current user object:", user);
-  console.log("User role:", user?.role);
-  console.log("User email:", user?.email);
-  console.log("Is admin?", user?.role === "admin");
-  console.log("isAdminOrModerator value:", isAdminOrModerator);
 
   const fetchSessions = useCallback(async () => {
     try {

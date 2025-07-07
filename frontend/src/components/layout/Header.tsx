@@ -4,11 +4,12 @@ import theme from '../../config/theme';
 import EmailVerificationModal from '../modals/EmailVerificationModal';
 
 interface User {
-  id: string;
+  id: string | number;
   email: string;
   firstName: string;
   lastName: string;
-  emailVerified?: boolean;
+  isEmailVerified?: boolean;
+  emailVerified?: boolean; // Keep for backward compatibility
 }
 
 interface HeaderProps {
@@ -18,6 +19,9 @@ interface HeaderProps {
 
 export default function Header({ title, user }: HeaderProps) {
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+  
+  // Check both possible field names for email verification status
+  const isEmailVerified = user?.isEmailVerified ?? user?.emailVerified ?? false;
 
   return (
     <>
@@ -49,7 +53,7 @@ export default function Header({ title, user }: HeaderProps) {
           </div>
 
           {/* Email Verification Warning */}
-          {!user?.emailVerified && (
+          {!isEmailVerified && (
             <button
               onClick={() => setShowVerificationModal(true)}
               className="flex items-center gap-2 px-3 py-1 rounded-lg text-sm hover:opacity-80 transition-opacity cursor-pointer"
@@ -80,7 +84,7 @@ export default function Header({ title, user }: HeaderProps) {
             className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold cursor-pointer"
             style={{ backgroundColor: theme.colors.primary, color: theme.colors.secondary }}
           >
-            {user?.firstName?.[0]}{user?.lastName?.[0]}
+            {user?.firstName?.[0]?.toUpperCase()}{user?.lastName?.[0]?.toUpperCase()}
           </div>
         </div>
       </header>

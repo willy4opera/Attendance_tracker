@@ -1,6 +1,6 @@
 import React, { createContext, useState, useCallback, useEffect } from 'react';
 import { authService } from '../services/auth.service';
-import api, { clearTokens } from '../services/api';
+import api from '../services/api';
 import { showToast } from '../utils/toast';
 import { AxiosError } from 'axios';
 
@@ -58,23 +58,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = localStorage.getItem('accessToken');
       if (!token) {
         setLoading(false);
-        setUser(null);
         return;
       }
 
-      console.log("Loading user data...");
-      console.log("Token exists:", !!token);
       const userData = await authService.getCurrentUser();
-      console.log("User data from getCurrentUser:", userData);
-      console.log("Login response userData:", userData);
-      console.log("AuthContext: Setting user data:", userData);
       setUser(userData);
     } catch (error) {
       console.error('Failed to load user:', error);
-      // Clear everything on error
-      clearTokens();
-      delete api.defaults.headers.common['Authorization'];
-      setUser(null);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
     } finally {
       setLoading(false);
     }
@@ -83,9 +75,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUser = useCallback(async () => {
     try {
       const userData = await authService.getCurrentUser();
-      console.log("User data from getCurrentUser:", userData);
-      console.log("Login response userData:", userData);
-      console.log("AuthContext: Setting user data:", userData);
       setUser(userData);
     } catch (error) {
       console.error('Failed to refresh user:', error);
@@ -99,13 +88,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (data: LoginData) => {
     try {
       const response = await authService.login(data);
-      const { token, refreshToken, user: userData } = response;
+      const { accessToken, refreshToken, user: userData } = response;
       
-      // Update the API headers
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
       
-      console.log("Login response userData:", userData);
-      console.log("AuthContext: Setting user data:", userData);
+      api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+      
       setUser(userData);
       showToast.success('Login successful!');
       
@@ -121,13 +110,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (data: RegisterData) => {
     try {
       const response = await authService.register(data);
-      const { token, refreshToken, user: userData } = response;
+      const { accessToken, refreshToken, user: userData } = response;
       
-      // Update the API headers
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
       
-      console.log("Register response userData:", userData);
-      console.log("AuthContext: Setting user data:", userData);
+      api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+      
       setUser(userData);
       showToast.success('Registration successful!');
       
@@ -146,15 +135,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Clear all auth data - authService.logout already calls clearTokens()
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       delete api.defaults.headers.common['Authorization'];
       setUser(null);
-      console.log("User cleared after logout");
       showToast.success('Logged out successfully');
     }
   }, []);
 
-  console.log("AuthContext current user state:", user);
   const value: AuthContextType = {
     user,
     loading,

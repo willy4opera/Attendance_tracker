@@ -13,7 +13,7 @@ import {
 import { FaChartLine } from 'react-icons/fa'
 import theme from '../../config/theme'
 import api from '../../services/api'
-import { toastError } from '../../utils/toastHelpers'
+import { toastError } from '../../utils/toast'
 
 interface StatCard {
   title: string
@@ -147,7 +147,7 @@ export default function Dashboard() {
       {/* Welcome Section */}
       <div className="bg-white rounded-lg p-6 shadow-sm" style={{ backgroundColor: theme.colors.background.paper }}>
         <h2 className="text-2xl font-bold mb-2" style={{ color: theme.colors.secondary }}>
-          Welcome back, {user?.firstName || user?.email}!
+          Welcome back, {user?.name || user?.email}!
         </h2>
         <p className="text-gray-600">
           Here's what's happening with your attendance system today.

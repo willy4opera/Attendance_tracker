@@ -1,13 +1,20 @@
 import api from './api';
 
 interface VerifyEmailResponse {
-  success: boolean;
+  success?: boolean;
+  status?: string;
   message: string;
 }
 
 interface ResendVerificationResponse {
-  success: boolean;
+  success?: boolean;
+  status?: string;
   message: string;
+}
+
+interface VerificationStatusResponse {
+  isVerified: boolean;
+  isEmailVerified?: boolean;
 }
 
 class EmailVerificationService {
@@ -32,7 +39,7 @@ class EmailVerificationService {
     }
   }
 
-  async checkVerificationStatus(): Promise<{ isVerified: boolean }> {
+  async checkVerificationStatus(): Promise<VerificationStatusResponse> {
     try {
       const response = await api.get('/email-verification/status');
       return response.data;

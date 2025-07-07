@@ -6,7 +6,7 @@ import { AiOutlineMail, AiOutlineLock, AiOutlineEye, AiOutlineEyeInvisible, AiOu
 import theme from '../../config/theme'
 import api, { setTokens } from '../../services/api'
 import { useAuth } from '../../contexts/useAuth'
-import { toastSuccess, toastError, toastInfo } from '../../utils/toast'
+import { toastSuccess, toastError, toastInfo } from '../../utils/toastHelpers'
 
 interface SocialProvider {
   name: string

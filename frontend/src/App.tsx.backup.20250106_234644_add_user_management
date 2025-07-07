@@ -6,14 +6,14 @@ import DashboardLayout from './components/layout/DashboardLayout'
 import Dashboard from './pages/dashboard/Dashboard'
 import SessionList from './pages/sessions/SessionList'
 import CreateSession from './pages/sessions/CreateSession'
-import UserManagement from './pages/users/UserManagement'
-import { AttendanceDashboard } from './pages/attendance'
 import './App.css'
 
 // Placeholder components for other routes
+const Attendance = () => <div className="p-4"><h1 className="text-2xl">My Attendance Page</h1></div>
 const QRScanner = () => <div className="p-4"><h1 className="text-2xl">QR Scanner Page</h1></div>
 const Reports = () => <div className="p-4"><h1 className="text-2xl">Reports Page</h1></div>
 const Files = () => <div className="p-4"><h1 className="text-2xl">Files Page</h1></div>
+const Users = () => <div className="p-4"><h1 className="text-2xl">Users Management Page</h1></div>
 const Profile = () => <div className="p-4"><h1 className="text-2xl">Profile Page</h1></div>
 const Settings = () => <div className="p-4"><h1 className="text-2xl">Settings Page</h1></div>
 
@@ -63,7 +63,7 @@ const router = createBrowserRouter(
         },
         {
           path: 'attendance',
-          element: <AttendanceDashboard />,
+          element: <Attendance />,
         },
         {
           path: 'qr-scanner',
@@ -79,7 +79,7 @@ const router = createBrowserRouter(
         },
         {
           path: 'users',
-          element: <UserManagement />,
+          element: <Users />,
         },
         {
           path: 'profile',

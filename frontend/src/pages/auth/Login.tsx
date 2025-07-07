@@ -4,8 +4,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { FaGoogle, FaFacebook, FaGithub, FaLinkedin, FaMicrosoft, FaApple } from 'react-icons/fa'
 import { AiOutlineMail, AiOutlineLock, AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
 import theme from '../../config/theme'
-import authService from '../../services/auth.service'
-import { toastSuccess, toastError, toastInfo } from '../../utils/toast'
+import { useAuth } from '../../contexts/useAuth'
+import { toastSuccess, toastError, toastInfo } from '../../utils/toastHelpers'
 
 interface SocialProvider {
   name: string
@@ -24,6 +24,7 @@ const socialProviders: SocialProvider[] = [
 
 export default function Login() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -35,20 +36,18 @@ export default function Login() {
     setIsLoading(true)
 
     try {
-      const response = await authService.login({ email, password })
-      toastSuccess('Login successful! Redirecting...')
+      const response = await login({ email, password })
       
-      // Check if email is verified
-      if (!response.user.emailVerified) {
-        toastInfo('Please verify your email to access all features')
+      if (response.success) {
+        toastSuccess('Login successful! Redirecting...')
+        setTimeout(() => {
+          navigate('/dashboard')
+        }, 1000)
+      } else {
+        toastError(response.error || 'Login failed. Please check your credentials.')
       }
-      
-      setTimeout(() => {
-        navigate('/dashboard')
-      }, 1000)
     } catch (err) {
-      const errorMessage = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login failed. Please check your credentials.'
-      toastError(errorMessage)
+      toastError('Login failed. Please check your credentials.')
     } finally {
       setIsLoading(false)
     }

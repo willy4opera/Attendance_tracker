@@ -24,8 +24,23 @@ interface MenuItem {
   roles?: string[]
 }
 
+interface Department {
+  id: number
+  name: string
+  code: string
+}
+
 interface SidebarProps {
-  user: { id: string; email: string; firstName: string; lastName: string; role: string; emailVerified?: boolean; department?: string } | null
+  user: { 
+    id: string | number
+    email: string
+    firstName: string
+    lastName: string
+    role: string
+    isEmailVerified?: boolean
+    emailVerified?: boolean // backward compatibility
+    department?: Department | null
+  } | null
   onLogout: () => void
 }
 
@@ -33,6 +48,9 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
   const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  
+  // Check both possible field names for email verification status
+  const isEmailVerified = user?.isEmailVerified ?? user?.emailVerified ?? false
 
   const menuItems: MenuItem[] = [
     {
@@ -137,7 +155,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
               className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
               style={{ backgroundColor: theme.colors.primary, color: theme.colors.secondary }}
             >
-              {user?.firstName?.[0]}{user?.lastName?.[0]}
+              {user?.firstName?.[0]?.toUpperCase()}{user?.lastName?.[0]?.toUpperCase()}
             </div>
             {!isCollapsed && (
               <div>
@@ -146,8 +164,9 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
                 </p>
                 <p className="text-xs" style={{ color: theme.colors.text.secondary }}>
                   {user?.role}
+                  {user?.department && ` • ${user.department.name}`}
                 </p>
-                {!user?.emailVerified && (
+                {!isEmailVerified && (
                   <p className="text-xs text-red-500 flex items-center gap-1">
                     <AiOutlineMail className="w-3 h-3" />
                     Verify email
