@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Email - {{companyName}}</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            color: #333333;
+            margin-bottom: 20px;
+        }
+        .message {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #555555;
+            margin-bottom: 30px;
+        }
+        .verification-code {
+            background-color: #f8f9fa;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 30px 0;
+        }
+        .code {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            letter-spacing: 8px;
+            margin: 10px 0;
+        }
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .verify-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            padding: 15px 40px;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+            transition: transform 0.2s;
+        }
+        .verify-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(102, 126, 234, 0.4);
+        }
+        .divider {
+            border-top: 1px solid #e0e0e0;
+            margin: 30px 0;
+        }
+        .security-notice {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .security-notice h3 {
+            margin: 0 0 10px 0;
+            color: #856404;
+            font-size: 16px;
+        }
+        .security-notice p {
+            margin: 0;
+            color: #856404;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            font-size: 14px;
+            color: #666666;
+        }
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .social-links {
+            margin: 20px 0;
+        }
+        .social-links a {
+            display: inline-block;
+            margin: 0 10px;
+        }
+        .expire-notice {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        @media only screen and (max-width: 600px) {
+            .content {
+                padding: 30px 20px;
+            }
+            .header h1 {
+                font-size: 24px;
+            }
+            .code {
+                font-size: 24px;
+                letter-spacing: 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{companyName}} Attendance Tracker</h1>
+        </div>
+        
+        <div class="content">
+            <h2 class="greeting">Hi {{userName}},</h2>
+            
+            <p class="message">
+                Thank you for registering with {{companyName}} Attendance Tracker! 
+                To complete your registration and ensure the security of your account, 
+                please verify your email address.
+            </p>
+
+            {{#if verificationCode}}
+            <div class="verification-code">
+                <p style="margin: 0 0 10px 0; color: #666;">Your verification code is:</p>
+                <div class="code">{{verificationCode}}</div>
+                <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">
+                    Enter this code in the verification page
+                </p>
+            </div>
+            {{/if}}
+
+            <div class="button-container">
+                <a href="{{verificationUrl}}" class="verify-button">Verify Email Address</a>
+            </div>
+
+            <p class="message" style="text-align: center; color: #666; font-size: 14px;">
+                Or copy and paste this link into your browser:<br>
+                <a href="{{verificationUrl}}" style="color: #667eea; word-break: break-all;">{{verificationUrl}}</a>
+            </p>
+
+            <div class="divider"></div>
+
+            <div class="security-notice">
+                <h3>🔒 Security Notice</h3>
+                <p>
+                    If you didn't create an account with {{companyName}} Attendance Tracker, 
+                    please ignore this email. Someone may have entered your email address by mistake.
+                </p>
+            </div>
+
+            <p class="expire-notice">
+                ⏰ This verification link will expire in {{expirationHours}} hours.
+            </p>
+
+            <div class="divider"></div>
+
+            <h3 style="color: #333; margin-bottom: 15px;">Why verify your email?</h3>
+            <ul style="color: #555; line-height: 1.8; padding-left: 20px;">
+                <li>Ensures you receive important attendance notifications</li>
+                <li>Allows password recovery if you forget your login</li>
+                <li>Keeps your account secure</li>
+                <li>Enables session invitations and reminders</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>Need help? Contact our support team at <a href="mailto:{{supportEmail}}">{{supportEmail}}</a></p>
+            
+            <div class="divider" style="margin: 20px auto; max-width: 100px;"></div>
+            
+            <p style="color: #999; font-size: 12px; margin: 10px 0;">
+                {{companyName}} | {{companyAddress}}
+            </p>
+            
+            <p style="color: #999; font-size: 12px; margin: 10px 0;">
+                You received this email because you signed up for {{companyName}} Attendance Tracker.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

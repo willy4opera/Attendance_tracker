@@ -1,0 +1,93 @@
+<mjml>
+  <mj-head>
+    <mj-title>Welcome to Change Ambassadors</mj-title>
+    <mj-preview>Your account has been successfully created</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Arial, sans-serif" />
+      <mj-text font-size="14px" color="#333333" line-height="1.6" />
+      <mj-section background-color="#f4f4f4" padding="0" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f4f4f4">
+    <!-- Header -->
+    <mj-section background-color="#1a1a2e" padding="20px 0">
+      <mj-column>
+        <mj-text align="center" color="#ffffff" font-size="24px" font-weight="bold">
+          Change Ambassadors
+        </mj-text>
+        <mj-text align="center" color="#ffffff" font-size="16px">
+          Attendance Tracking System
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main Content -->
+    <mj-wrapper padding="20px 0">
+      <mj-section background-color="#ffffff" padding="30px" border-radius="8px">
+        <mj-column>
+          <!-- Welcome Header -->
+          <mj-text font-size="28px" color="#1a1a2e" font-weight="bold" align="center" padding-bottom="20px">
+            Welcome to Attendance Tracker!
+          </mj-text>
+          
+          <!-- Greeting -->
+          <mj-text font-size="18px" padding-bottom="20px">
+            Hi {{firstName}},
+          </mj-text>
+          
+          <!-- Main Message -->
+          <mj-text>
+            We're thrilled to have you join our attendance tracking platform. Your account has been successfully created, and you're all set to start tracking attendance efficiently.
+          </mj-text>
+          
+          <!-- Account Details -->
+          <mj-divider border-color="#e0e0e0" padding="20px 0" />
+          
+          <mj-text font-size="16px" font-weight="bold" color="#1a1a2e">
+            Your Account Details:
+          </mj-text>
+          
+          <mj-table padding="10px 0">
+            <tr style="border-bottom: 1px solid #f0f0f0;">
+              <td style="padding: 10px 0; color: #666;">Email:</td>
+              <td style="padding: 10px 0; font-weight: bold;">{{email}}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f0f0f0;">
+              <td style="padding: 10px 0; color: #666;">Name:</td>
+              <td style="padding: 10px 0; font-weight: bold;">{{firstName}} {{lastName}}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f0f0f0;">
+              <td style="padding: 10px 0; color: #666;">Role:</td>
+              <td style="padding: 10px 0; font-weight: bold;">{{role}}</td>
+            </tr>
+          </mj-table>
+          
+          <!-- CTA Button -->
+          <mj-button background-color="#007bff" color="#ffffff" font-size="16px" padding="20px 0" href="{{loginUrl}}">
+            Log In to Your Account
+          </mj-button>
+          
+          <!-- Support -->
+          <mj-divider border-color="#e0e0e0" padding="20px 0" />
+          
+          <mj-text align="center" color="#666666">
+            Need help? Our support team is here for you.<br/>
+            Email us at <a href="mailto:{{supportEmail}}" style="color: #007bff;">{{supportEmail}}</a>
+          </mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+
+    <!-- Footer -->
+    <mj-section padding="20px 0">
+      <mj-column>
+        <mj-text align="center" color="#666666" font-size="12px">
+          © {{currentYear}} {{companyName}}. All rights reserved.
+        </mj-text>
+        <mj-text align="center" color="#999999" font-size="11px">
+          This email was sent to {{recipientEmail}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

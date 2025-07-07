@@ -1,0 +1,733 @@
+// Email utility using nodemailer
+'use strict';
+
+// Load environment variables first
+require('dotenv').config();
+
+// Create a function to get nodemailer
+function getNodemailer() {
+  // Clear cache and require fresh
+  delete require.cache[require.resolve('nodemailer')];
+  return require('nodemailer');
+}
+
+// Send email function
+const sendEmail = async (options) => {
+  try {
+    const nodemailer = getNodemailer();
+    
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: parseInt(process.env.EMAIL_PORT, 10),
+      secure: process.env.EMAIL_SECURE === 'true',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+      to: options.to,
+      subject: options.subject,
+      text: options.text,
+      html: options.html
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully to:', options.to);
+    return info;
+  } catch (error) {
+    console.error('Error sending email:', error.message);
+    throw error;
+  }
+};
+
+// Send welcome email
+const sendWelcomeEmail = async (user) => {
+  const subject = 'Welcome to Attendance Tracker';
+  const html = `
+    <h1>Welcome ${user.firstName}!</h1>
+    <p>Thank you for registering with our Attendance Tracking System.</p>
+    <p>Your account has been successfully created with the email: ${user.email}</p>
+    <p>You can now log in and start using our services.</p>
+    <br>
+    <p>Best regards,<br>The Attendance Tracker Team</p>
+  `;
+
+  return sendEmail({
+    to: user.email,
+    subject,
+    html,
+    text: `Welcome ${user.firstName}! Thank you for registering with our Attendance Tracking System.`
+  });
+};
+
+// Send password reset email
+const sendPasswordResetEmail = async (user, resetToken) => {
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+  const subject = 'Password Reset Request';
+  const html = `
+    <h1>Password Reset Request</h1>
+    <p>Hi ${user.firstName},</p>
+    <p>You requested a password reset for your Attendance Tracker account.</p>
+    <p>Please click the link below to reset your password:</p>
+    <a href="${resetUrl}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
+    <p>Or copy and paste this link in your browser:</p>
+    <p>${resetUrl}</p>
+    <p>This link will expire in 1 hour.</p>
+    <p>If you didn't request this, please ignore this email.</p>
+    <br>
+    <p>Best regards,<br>The Attendance Tracker Team</p>
+  `;
+
+  return sendEmail({
+    to: user.email,
+    subject,
+    html,
+    text: `Hi ${user.firstName}, Please use this link to reset your password: ${resetUrl}. This link will expire in 1 hour.`
+  });
+};
+
+// Test email configuration
+const testEmailConfiguration = async () => {
+  try {
+    const nodemailer = getNodemailer();
+    
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: parseInt(process.env.EMAIL_PORT, 10),
+      secure: process.env.EMAIL_SECURE === 'true',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+    
+    await transporter.verify();
+    console.log('Email configuration is valid');
+    return true;
+  } catch (error) {
+    console.error('Email configuration error:', error.message);
+    return false;
+  }
+};
+
+module.exports = {
+  sendEmail,
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
+  testEmailConfiguration
+};
+
+// Import template engine
+const emailTemplateEngine = require('./emailTemplateEngine');
+
+// Updated sendWelcomeEmail with template
+const sendWelcomeEmailWithTemplate = async (user) => {
+  try {
+    const html = await emailTemplateEngine.renderWelcomeEmail(user);
+    
+    return sendEmail({
+      to: user.email,
+      subject: 'Welcome to Change Ambassadors - Attendance Tracker',
+      html: html,
+      text: `Welcome ${user.firstName}! Your account has been successfully created.`
+    });
+  } catch (error) {
+    console.error('Error in sendWelcomeEmailWithTemplate:', error);
+    // Fallback to simple version
+    return sendWelcomeEmail(user);
+  }
+};
+
+// Export the template version
+module.exports.sendWelcomeEmailWithTemplate = sendWelcomeEmailWithTemplate;
+
+// Enhanced sendWelcomeEmail with better HTML
+const sendWelcomeEmailHTML = async (user) => {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+        <div style="background-color: #1a1a2e; padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0;">Change Ambassadors</h1>
+            <p style="color: #ffffff; margin: 10px 0 0 0;">Attendance Tracking System</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="color: #333;">Welcome, ${user.firstName}!</h2>
+            <p style="color: #555; line-height: 1.6;">
+                We're excited to have you join Change Ambassadors. Your account has been successfully created.
+            </p>
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 30px 0;">
+                <h3 style="color: #333; margin-top: 0;">Your Account Details:</h3>
+                <p style="margin: 5px 0;"><strong>Email:</strong> ${user.email}</p>
+                <p style="margin: 5px 0;"><strong>Name:</strong> ${user.firstName} ${user.lastName}</p>
+                <p style="margin: 5px 0;"><strong>Role:</strong> ${user.role || 'User'}</p>
+            </div>
+            <div style="text-align: center; margin: 40px 0;">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" 
+                   style="display: inline-block; padding: 12px 30px; background-color: #007bff; 
+                          color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                    Log In to Your Account
+                </a>
+            </div>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #dee2e6;">
+            <p style="color: #666; margin: 0; font-size: 14px;">
+                © ${new Date().getFullYear()} Change Ambassadors. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+  return sendEmail({
+    to: user.email,
+    subject: 'Welcome to Change Ambassadors',
+    html: html,
+    text: `Welcome ${user.firstName}! Your account has been successfully created.`
+  });
+};
+
+module.exports.sendWelcomeEmailHTML = sendWelcomeEmailHTML;
+
+// Compact welcome email to avoid Gmail trimming
+const sendWelcomeEmailCompact = async (user) => {
+  const timestamp = new Date().getTime();
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f4f4f4">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:20px">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px">
+<tr><td style="background:#1a1a2e;padding:25px;text-align:center;border-radius:8px 8px 0 0">
+<h1 style="color:#fff;margin:0;font-size:24px">Change Ambassadors</h1>
+</td></tr>
+<tr><td style="padding:30px">
+<h2 style="color:#333;margin:0 0 15px">Welcome, ${user.firstName}!</h2>
+<p style="color:#555;line-height:1.5;margin:0 0 20px">Your account has been successfully created.</p>
+<div style="background:#f0f0f0;padding:15px;border-radius:5px">
+<p style="margin:5px 0"><b>Email:</b> ${user.email}</p>
+<p style="margin:5px 0"><b>Name:</b> ${user.firstName} ${user.lastName}</p>
+</div>
+<p style="text-align:center;margin:25px 0">
+<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" style="display:inline-block;padding:12px 30px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px">Log In</a>
+</p>
+</td></tr>
+<tr><td style="background:#f8f9fa;padding:15px;text-align:center;font-size:12px;color:#666;border-radius:0 0 8px 8px">
+© ${new Date().getFullYear()} Change Ambassadors | REF-${timestamp}
+</td></tr>
+</table>
+</td></tr></table>
+</body>
+</html>`;
+
+  return sendEmail({
+    to: user.email,
+    subject: 'Welcome to Change Ambassadors',
+    html: html,
+    text: `Welcome ${user.firstName}! Your account has been created. Log in at: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`
+  });
+};
+
+module.exports.sendWelcomeEmailCompact = sendWelcomeEmailCompact;
+
+// Well-formatted but compact welcome email
+const sendWelcomeEmailFormatted = async (user) => {
+  const timestamp = new Date().getTime();
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background-color:#f5f5f5">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f5">
+<tr><td align="center" style="padding:40px 20px">
+<table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:10px;box-shadow:0 2px 4px rgba(0,0,0,0.1)">
+<!-- Header -->
+<tr><td style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:40px 30px;text-align:center;border-radius:10px 10px 0 0">
+<h1 style="color:#ffffff;margin:0;font-size:28px;font-weight:700">Change Ambassadors</h1>
+<p style="color:#ffffff;margin:10px 0 0;font-size:16px;opacity:0.9">Attendance Tracking System</p>
+</td></tr>
+<!-- Content -->
+<tr><td style="padding:40px 30px">
+<h2 style="color:#2d3748;margin:0 0 20px;font-size:24px;font-weight:600">Welcome, ${user.firstName}! 👋</h2>
+<p style="color:#4a5568;font-size:16px;line-height:1.6;margin:0 0 30px">
+Your account has been successfully created. We're excited to have you as part of our community!
+</p>
+<!-- Account Details Box -->
+<table width="100%" cellpadding="15" style="background-color:#f7fafc;border-radius:8px;margin-bottom:30px">
+<tr><td>
+<p style="margin:0 0 10px;color:#2d3748;font-size:14px;text-transform:uppercase;font-weight:600;letter-spacing:0.5px">Your Account Details</p>
+<table width="100%" style="font-size:15px">
+<tr><td style="color:#718096;padding:5px 0">Email:</td><td style="color:#2d3748;font-weight:600">${user.email}</td></tr>
+<tr><td style="color:#718096;padding:5px 0">Name:</td><td style="color:#2d3748;font-weight:600">${user.firstName} ${user.lastName}</td></tr>
+<tr><td style="color:#718096;padding:5px 0">Role:</td><td style="color:#2d3748;font-weight:600">${user.role || 'User'}</td></tr>
+</table>
+</td></tr>
+</table>
+<!-- CTA Button -->
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td align="center" style="padding:10px 0">
+<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" style="display:inline-block;padding:14px 40px;background-color:#667eea;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:16px">Access Your Dashboard</a>
+</td></tr>
+</table>
+</td></tr>
+<!-- Footer -->
+<tr><td style="background-color:#f7fafc;padding:25px;text-align:center;border-radius:0 0 10px 10px">
+<p style="color:#718096;margin:0;font-size:14px">Need help? Contact us at 
+<a href="mailto:${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}" style="color:#667eea;text-decoration:none">${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}</a>
+</p>
+<p style="color:#a0aec0;margin:10px 0 0;font-size:12px">© ${new Date().getFullYear()} Change Ambassadors. All rights reserved.<br>REF: ${timestamp}</p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+
+  const text = `Welcome to Change Ambassadors!
+
+Hi ${user.firstName},
+
+Your account has been successfully created. We're excited to have you as part of our community!
+
+Your Account Details:
+- Email: ${user.email}
+- Name: ${user.firstName} ${user.lastName}
+- Role: ${user.role || 'User'}
+
+Access your dashboard at: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login
+
+Need help? Contact us at ${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}
+
+© ${new Date().getFullYear()} Change Ambassadors. All rights reserved.`;
+
+  return sendEmail({
+    to: user.email,
+    subject: 'Welcome to Change Ambassadors - Your Account is Ready',
+    html: html,
+    text: text
+  });
+};
+
+module.exports.sendWelcomeEmailFormatted = sendWelcomeEmailFormatted;
+
+// Clean, properly formatted welcome email
+const sendWelcomeEmailClean = async (user) => {
+  const timestamp = Date.now();
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome to Change Ambassadors</title>
+<!--[if mso]>
+<noscript>
+<xml>
+<o:OfficeDocumentSettings>
+<o:PixelsPerInch>96</o:PixelsPerInch>
+</o:OfficeDocumentSettings>
+</xml>
+</noscript>
+<![endif]-->
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333333; background-color: #f4f4f4;">
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f4;">
+<tr>
+<td align="center" style="padding: 40px 0;">
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+<!-- Header -->
+<tr>
+<td align="center" style="background-color: #4c51bf; padding: 40px 20px;">
+<h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">Change Ambassadors</h1>
+<p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 16px;">Attendance Tracking System</p>
+</td>
+</tr>
+<!-- Body -->
+<tr>
+<td style="padding: 40px 30px;">
+<h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px;">Welcome, ${user.firstName}!</h2>
+<p style="margin: 0 0 20px 0; color: #555555; font-size: 16px;">
+We're thrilled to have you join Change Ambassadors. Your account has been successfully created and is ready to use.
+</p>
+<!-- Account Info -->
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 30px 0;">
+<tr>
+<td style="background-color: #f8f9fa; padding: 20px; border-radius: 6px;">
+<h3 style="margin: 0 0 15px 0; color: #333333; font-size: 16px; text-transform: uppercase;">Account Details</h3>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+<tr>
+<td width="30%" style="padding: 5px 0; color: #666666; font-size: 14px;">Email:</td>
+<td style="padding: 5px 0; color: #333333; font-size: 14px; font-weight: bold;">${user.email}</td>
+</tr>
+<tr>
+<td style="padding: 5px 0; color: #666666; font-size: 14px;">Name:</td>
+<td style="padding: 5px 0; color: #333333; font-size: 14px; font-weight: bold;">${user.firstName} ${user.lastName}</td>
+</tr>
+<tr>
+<td style="padding: 5px 0; color: #666666; font-size: 14px;">Role:</td>
+<td style="padding: 5px 0; color: #333333; font-size: 14px; font-weight: bold;">${user.role || 'User'}</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+<!-- Button -->
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 30px 0;">
+<tr>
+<td align="center">
+<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" target="_blank" style="display: inline-block; padding: 14px 30px; background-color: #4c51bf; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold;">Log In to Your Account</a>
+</td>
+</tr>
+</table>
+<p style="margin: 20px 0 0 0; color: #666666; font-size: 14px; text-align: center;">
+Need help? Email us at <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}" style="color: #4c51bf; text-decoration: none;">${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}</a>
+</p>
+</td>
+</tr>
+<!-- Footer -->
+<tr>
+<td align="center" style="background-color: #f8f9fa; padding: 20px;">
+<p style="margin: 0; color: #999999; font-size: 12px;">
+&copy; ${new Date().getFullYear()} Change Ambassadors. All rights reserved.
+</p>
+<p style="margin: 5px 0 0 0; color: #cccccc; font-size: 10px;">
+REF: ${timestamp}
+</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>`;
+
+  const text = `Welcome to Change Ambassadors!
+
+Hi ${user.firstName},
+
+We're thrilled to have you join Change Ambassadors. Your account has been successfully created and is ready to use.
+
+Account Details:
+Email: ${user.email}
+Name: ${user.firstName} ${user.lastName}
+Role: ${user.role || 'User'}
+
+Log in to your account: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login
+
+Need help? Email us at ${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}
+
+© ${new Date().getFullYear()} Change Ambassadors. All rights reserved.`;
+
+  return sendEmail({
+    to: user.email,
+    subject: 'Welcome to Change Ambassadors',
+    html: html,
+    text: text
+  });
+};
+
+module.exports.sendWelcomeEmailClean = sendWelcomeEmailClean;
+
+// Mobile-friendly responsive welcome email
+const sendWelcomeEmailMobile = async (user) => {
+  const timestamp = Date.now();
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Welcome to Change Ambassadors</title>
+<style type="text/css">
+@media screen and (max-width: 600px) {
+  .container { width: 100% !important; }
+  .content { padding: 20px !important; }
+  .header { padding: 30px 20px !important; }
+  .button { width: 100% !important; text-align: center !important; }
+  .button a { display: block !important; width: 100% !important; }
+}
+</style>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333333; background-color: #f4f4f4;">
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f4;">
+<tr>
+<td align="center" style="padding: 20px 15px;">
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" class="container" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
+<!-- Header -->
+<tr>
+<td align="center" class="header" style="background-color: #4c51bf; padding: 30px 20px;">
+<h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold;">Change Ambassadors</h1>
+<p style="margin: 8px 0 0 0; color: #e0e7ff; font-size: 14px;">Attendance Tracking System</p>
+</td>
+</tr>
+<!-- Body -->
+<tr>
+<td class="content" style="padding: 30px 20px;">
+<!-- Welcome Message -->
+<h2 style="margin: 0 0 15px 0; color: #333333; font-size: 20px; text-align: center;">Welcome, ${user.firstName}! 👋</h2>
+<p style="margin: 0 0 25px 0; color: #555555; font-size: 15px; text-align: center;">
+Your account is ready! Let's get you started.
+</p>
+<!-- Account Info - Mobile Friendly -->
+<div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin: 0 0 25px 0;">
+<p style="margin: 0 0 10px 0; color: #4c51bf; font-size: 12px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">ACCOUNT DETAILS</p>
+<p style="margin: 0 0 8px 0; font-size: 14px;">
+<span style="color: #666666;">Email:</span><br>
+<strong style="color: #333333;">${user.email}</strong>
+</p>
+<p style="margin: 0 0 8px 0; font-size: 14px;">
+<span style="color: #666666;">Name:</span><br>
+<strong style="color: #333333;">${user.firstName} ${user.lastName}</strong>
+</p>
+<p style="margin: 0; font-size: 14px;">
+<span style="color: #666666;">Role:</span><br>
+<strong style="color: #333333;">${user.role || 'User'}</strong>
+</p>
+</div>
+<!-- CTA Button - Full Width on Mobile -->
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 0 20px 0;">
+<tr>
+<td align="center" class="button">
+<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" target="_blank" style="display: inline-block; width: auto; padding: 12px 40px; background-color: #4c51bf; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; text-align: center;">Log In to Dashboard</a>
+</td>
+</tr>
+</table>
+<!-- Support -->
+<p style="margin: 0; color: #666666; font-size: 14px; text-align: center;">
+Questions? <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}" style="color: #4c51bf; text-decoration: none; font-weight: bold;">${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}</a>
+</p>
+</td>
+</tr>
+<!-- Footer -->
+<tr>
+<td align="center" style="background-color: #f8f9fa; padding: 20px;">
+<p style="margin: 0; color: #999999; font-size: 12px;">
+© ${new Date().getFullYear()} Change Ambassadors
+</p>
+<p style="margin: 5px 0 0 0; color: #cccccc; font-size: 10px;">
+REF: ${timestamp}
+</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>`;
+
+  const text = `Welcome to Change Ambassadors!
+
+Hi ${user.firstName},
+
+Your account is ready! Let's get you started.
+
+Account Details:
+Email: ${user.email}
+Name: ${user.firstName} ${user.lastName}
+Role: ${user.role || 'User'}
+
+Log in to dashboard: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login
+
+Questions? ${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}
+
+© ${new Date().getFullYear()} Change Ambassadors`;
+
+  return sendEmail({
+    to: user.email,
+    subject: 'Welcome to Change Ambassadors',
+    html: html,
+    text: text
+  });
+};
+
+module.exports.sendWelcomeEmailMobile = sendWelcomeEmailMobile;
+
+// Ultimate mobile-responsive welcome email
+const sendWelcomeEmailResponsive = async (user) => {
+  const timestamp = Date.now();
+  const html = `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting">
+<title>Welcome</title>
+<!--[if mso]>
+<style type="text/css">
+table {border-collapse:collapse;border-spacing:0;margin:0;}
+div, td {padding:0;}
+div {margin:0 !important;}
+</style>
+<![endif]-->
+<style type="text/css">
+body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+img { -ms-interpolation-mode: bicubic; }
+
+* { box-sizing: border-box; }
+body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }
+table { border-collapse: collapse !important; }
+
+@media screen and (max-width: 600px) {
+  .mobile-padding { padding: 20px !important; }
+  .mobile-center { text-align: center !important; }
+  .container { width: 100% !important; max-width: 100% !important; }
+  .mobile-button { width: 100% !important; }
+  .mobile-button a { 
+    display: block !important; 
+    font-size: 18px !important;
+    padding: 15px !important;
+  }
+}
+</style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f5f5f5;">
+<div style="display: none; max-height: 0; overflow: hidden;">Welcome to Change Ambassadors! Your account is ready.</div>
+<table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f5f5f5;">
+<tr>
+<td align="center" style="padding: 40px 10px;">
+<!--[if mso]>
+<table align="center" border="0" cellspacing="0" cellpadding="0" width="600">
+<tr>
+<td align="center" valign="top" width="600">
+<![endif]-->
+<table border="0" cellpadding="0" cellspacing="0" width="100%" class="container" style="max-width: 600px; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+<!-- Logo/Header -->
+<tr>
+<td align="center" style="padding: 40px 20px 20px 20px;">
+<div style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50px;">
+<h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 600; letter-spacing: 1px;">CHANGE AMBASSADORS</h1>
+</div>
+</td>
+</tr>
+<!-- Welcome Section -->
+<tr>
+<td class="mobile-padding" style="padding: 20px 40px;">
+<h2 style="margin: 0 0 10px 0; font-size: 28px; font-weight: 700; color: #1a202c; text-align: center;">
+Welcome, ${user.firstName}! 🎉
+</h2>
+<p style="margin: 0 0 30px 0; font-size: 16px; line-height: 24px; color: #4a5568; text-align: center;">
+Your account has been created successfully. We're excited to have you on board!
+</p>
+</td>
+</tr>
+<!-- Account Details Card -->
+<tr>
+<td class="mobile-padding" style="padding: 0 40px 30px 40px;">
+<table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f7fafc; border-radius: 8px;">
+<tr>
+<td style="padding: 25px;">
+<p style="margin: 0 0 15px 0; font-size: 12px; font-weight: 600; color: #667eea; text-transform: uppercase; letter-spacing: 0.5px;">Your Account Information</p>
+<table border="0" cellpadding="0" cellspacing="0" width="100%">
+<tr>
+<td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+<p style="margin: 0; font-size: 14px; color: #718096;">Email Address</p>
+<p style="margin: 4px 0 0 0; font-size: 16px; color: #1a202c; font-weight: 600;">${user.email}</p>
+</td>
+</tr>
+<tr>
+<td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+<p style="margin: 0; font-size: 14px; color: #718096;">Full Name</p>
+<p style="margin: 4px 0 0 0; font-size: 16px; color: #1a202c; font-weight: 600;">${user.firstName} ${user.lastName}</p>
+</td>
+</tr>
+<tr>
+<td style="padding: 8px 0;">
+<p style="margin: 0; font-size: 14px; color: #718096;">Account Role</p>
+<p style="margin: 4px 0 0 0; font-size: 16px; color: #1a202c; font-weight: 600;">${user.role || 'User'}</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<!-- CTA Button -->
+<tr>
+<td class="mobile-padding" style="padding: 0 40px 40px 40px;">
+<table border="0" cellpadding="0" cellspacing="0" width="100%" class="mobile-button">
+<tr>
+<td align="center" style="background-color: #667eea; border-radius: 8px;">
+<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" target="_blank" style="display: inline-block; width: 100%; padding: 16px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px; box-sizing: border-box;">Access Your Dashboard →</a>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<!-- Help Section -->
+<tr>
+<td style="padding: 0 40px 40px 40px; border-top: 1px solid #e2e8f0;">
+<p style="margin: 20px 0 0 0; font-size: 14px; line-height: 20px; color: #718096; text-align: center;">
+Need help getting started?<br>
+Contact us at <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}" style="color: #667eea; text-decoration: none; font-weight: 600;">${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}</a>
+</p>
+</td>
+</tr>
+</table>
+<!--[if mso]>
+</td>
+</tr>
+</table>
+<![endif]-->
+<!-- Footer -->
+<table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
+<tr>
+<td align="center" style="padding: 20px;">
+<p style="margin: 0; font-size: 12px; line-height: 18px; color: #a0aec0;">
+© ${new Date().getFullYear()} Change Ambassadors. All rights reserved.<br>
+<span style="font-size: 10px;">REF: ${timestamp}</span>
+</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>`;
+
+  const text = `Welcome to Change Ambassadors!
+
+Hi ${user.firstName},
+
+Your account has been created successfully. We're excited to have you on board!
+
+Your Account Information:
+- Email Address: ${user.email}
+- Full Name: ${user.firstName} ${user.lastName}
+- Account Role: ${user.role || 'User'}
+
+Access Your Dashboard: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login
+
+Need help getting started?
+Contact us at ${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}
+
+© ${new Date().getFullYear()} Change Ambassadors. All rights reserved.`;
+
+  return sendEmail({
+    to: user.email,
+    subject: 'Welcome to Change Ambassadors 🎉',
+    html: html,
+    text: text
+  });
+};
+
+module.exports.sendWelcomeEmailResponsive = sendWelcomeEmailResponsive;

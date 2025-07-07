@@ -1,0 +1,170 @@
+<mjml>
+  <mj-head>
+    <mj-title>Welcome to Change Ambassadors</mj-title>
+    <mj-preview>Your journey with us begins now</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" />
+      <mj-text font-size="15px" line-height="1.6" color="#4a5568" />
+      <mj-button font-weight="600" />
+    </mj-attributes>
+    <mj-style>
+      .gradient-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+      }
+      @media only screen and (max-width: 600px) {
+        .mobile-hidden { display: none !important; }
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#f7fafc">
+    <!-- Preheader -->
+    <mj-section padding="0">
+      <mj-column>
+        <mj-text align="center" font-size="12px" color="#a0aec0" padding="10px">
+          Welcome to the future of attendance tracking
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Header with Gradient -->
+    <mj-section background-color="#667eea" padding="40px 20px">
+      <mj-column>
+        <mj-text align="center" color="#ffffff" font-size="32px" font-weight="700" letter-spacing="-1px">
+          Change Ambassadors
+        </mj-text>
+        <mj-text align="center" color="#e0e7ff" font-size="16px" padding-top="0">
+          Attendance Management System
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main Content -->
+    <mj-wrapper padding="20px">
+      <!-- Welcome Card -->
+      <mj-section background-color="#ffffff" padding="0" border-radius="12px">
+        <mj-column>
+          <!-- Welcome Icon -->
+          <mj-image src="https://i.imgur.com/TSDSkjY.png" width="80px" alt="Welcome" padding="40px 0 20px" />
+          
+          <!-- Welcome Message -->
+          <mj-text align="center" font-size="28px" font-weight="700" color="#2d3748" padding="0 40px 10px">
+            Welcome aboard, {{firstName}}! 🎉
+          </mj-text>
+          <mj-text align="center" font-size="16px" color="#718096" padding="0 40px 30px">
+            We're thrilled to have you join Change Ambassadors. Your account is all set up and ready to go.
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+      <!-- Account Info Section -->
+      <mj-section background-color="#ffffff" padding="0 40px 30px">
+        <mj-column background-color="#f7fafc" padding="25px" border-radius="8px">
+          <mj-text font-size="14px" font-weight="600" color="#4a5568" padding-bottom="15px">
+            YOUR ACCOUNT INFORMATION
+          </mj-text>
+          
+          <mj-table>
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+              <td style="padding: 12px 0; color: #718096; font-size: 14px;">Login Email</td>
+              <td style="padding: 12px 0; color: #2d3748; font-weight: 600; text-align: right;">{{email}}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+              <td style="padding: 12px 0; color: #718096; font-size: 14px;">Full Name</td>
+              <td style="padding: 12px 0; color: #2d3748; font-weight: 600; text-align: right;">{{firstName}} {{lastName}}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+              <td style="padding: 12px 0; color: #718096; font-size: 14px;">Role</td>
+              <td style="padding: 12px 0; color: #2d3748; font-weight: 600; text-align: right;">{{role}}</td>
+            </tr>
+            {{#if department}}
+            <tr>
+              <td style="padding: 12px 0; color: #718096; font-size: 14px;">Department</td>
+              <td style="padding: 12px 0; color: #2d3748; font-weight: 600; text-align: right;">{{department}}</td>
+            </tr>
+            {{/if}}
+          </mj-table>
+        </mj-column>
+      </mj-section>
+
+      <!-- Getting Started Section -->
+      <mj-section background-color="#ffffff" padding="0 40px 30px">
+        <mj-column>
+          <mj-text font-size="18px" font-weight="600" color="#2d3748" padding-bottom="15px">
+            Get Started in 3 Simple Steps
+          </mj-text>
+          
+          <mj-text padding="15px 0">
+            <span style="display: inline-block; width: 30px; height: 30px; background: #667eea; color: white; text-align: center; line-height: 30px; border-radius: 50%; margin-right: 15px; font-weight: 600;">1</span>
+            <span style="font-weight: 600; color: #2d3748;">Log into your account</span>
+            <br/>
+            <span style="margin-left: 45px; color: #718096; font-size: 14px;">Access your personalized dashboard</span>
+          </mj-text>
+          
+          <mj-text padding="15px 0">
+            <span style="display: inline-block; width: 30px; height: 30px; background: #667eea; color: white; text-align: center; line-height: 30px; border-radius: 50%; margin-right: 15px; font-weight: 600;">2</span>
+            <span style="font-weight: 600; color: #2d3748;">Complete your profile</span>
+            <br/>
+            <span style="margin-left: 45px; color: #718096; font-size: 14px;">Add your photo and additional details</span>
+          </mj-text>
+          
+          <mj-text padding="15px 0">
+            <span style="display: inline-block; width: 30px; height: 30px; background: #667eea; color: white; text-align: center; line-height: 30px; border-radius: 50%; margin-right: 15px; font-weight: 600;">3</span>
+            <span style="font-weight: 600; color: #2d3748;">Start tracking attendance</span>
+            <br/>
+            <span style="margin-left: 45px; color: #718096; font-size: 14px;">Check in to your first session</span>
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+      <!-- CTA Button -->
+      <mj-section background-color="#ffffff" padding="0 40px 40px" border-radius="0 0 12px 12px">
+        <mj-column>
+          <mj-button 
+            background-color="#667eea" 
+            color="#ffffff" 
+            font-size="16px" 
+            padding="15px 50px"
+            border-radius="8px"
+            href="{{loginUrl}}"
+            width="300px">
+            Access Your Dashboard
+          </mj-button>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+
+    <!-- Help Section -->
+    <mj-section padding="30px 20px">
+      <mj-column>
+        <mj-text align="center" font-size="16px" font-weight="600" color="#4a5568" padding-bottom="10px">
+          Need Help Getting Started?
+        </mj-text>
+        <mj-text align="center" font-size="14px" color="#718096">
+          Our support team is here to help you every step of the way.<br/>
+          Email us at <a href="mailto:{{supportEmail}}" style="color: #667eea; text-decoration: none; font-weight: 600;">{{supportEmail}}</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section padding="20px">
+      <mj-column>
+        <mj-divider border-color="#e2e8f0" border-width="1px" />
+        <mj-text align="center" font-size="12px" color="#a0aec0" padding-top="20px">
+          © {{currentYear}} Change Ambassadors. All rights reserved.<br/>
+          {{companyAddress}}
+        </mj-text>
+        <mj-social font-size="15px" icon-size="30px" mode="horizontal" padding="20px 0" align="center">
+          <mj-social-element name="facebook" href="https://facebook.com" background-color="#667eea" />
+          <mj-social-element name="twitter" href="https://twitter.com" background-color="#667eea" />
+          <mj-social-element name="linkedin" href="https://linkedin.com" background-color="#667eea" />
+        </mj-social>
+        <mj-text align="center" font-size="11px" color="#cbd5e0">
+          This email was sent to {{recipientEmail}}<br/>
+          <a href="#" style="color: #667eea; text-decoration: underline;">Unsubscribe</a> | 
+          <a href="#" style="color: #667eea; text-decoration: underline;">Privacy Policy</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

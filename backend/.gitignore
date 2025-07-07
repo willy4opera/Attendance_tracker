@@ -1,0 +1,5 @@
+
+# Seeders - DO NOT DEPLOY TO PRODUCTION
+src/seeders/
+*.seed.js
+*.seeder.js

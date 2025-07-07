@@ -1,25 +1,18 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
+const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
-const path = require('path');
-const config = require('../../config/app.config.json');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const compression = require('compression');
+const dotenv = require('dotenv');
+const routes = require('./routes');
 
-// Import middleware
-const errorHandler = require('./middleware/error.middleware');
-const rateLimiter = require('./middleware/rate-limit.middleware');
-
-// Import routes
-const authRoutes = require('./routes/auth.routes');
-const userRoutes = require('./routes/user.routes');
-const sessionRoutes = require('./routes/session.routes');
-const attendanceRoutes = require('./routes/attendance.routes');
-const analyticsRoutes = require('./routes/analytics.routes');
-
-// Import Swagger
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('./utils/swagger');
+// Load environment variables
+dotenv.config();
 
 const app = express();
 
@@ -29,58 +22,72 @@ app.set('trust proxy', 1);
 // Security middleware
 app.use(helmet());
 
-// CORS configuration
-app.use(cors(config.app.cors));
+// Rate limiting
+const limiter = rateLimit({
+  max: 100,
+  windowMs: 60 * 60 * 1000, // 1 hour
+  message: 'Too many requests from this IP, please try again in an hour!'
+});
+app.use('/api', limiter);
 
-// Compression middleware
+// Body parser, reading data from body into req.body
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(cookieParser());
+
+// Data sanitization against NoSQL query injection
+app.use(mongoSanitize());
+
+// Data sanitization against XSS
+app.use(xss());
+
+// Compress responses
 app.use(compression());
 
-// Body parser middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Logging middleware
-if (config.app.environment !== 'test') {
-  app.use(morgan('combined'));
-}
-
-// Static files
+// Serve static files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Rate limiting
-app.use('/api/', rateLimiter);
+// Enable CORS
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true
+}));
 
-// API Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// Development logging
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+}
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  });
-});
+// API routes
+app.use('/api/v1', routes);
 
-// API Routes
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/sessions', sessionRoutes);
-app.use('/api/v1/attendance', attendanceRoutes);
-app.use('/api/v1/analytics', analyticsRoutes);
-
-// 404 handler
-app.use((req, res) => {
+// Handle undefined routes
+app.all('*', (req, res) => {
   res.status(404).json({
-    status: 'error',
-    error: {
-      code: 'NOT_FOUND',
-      message: 'The requested resource was not found'
-    }
+    status: 'fail',
+    message: `Can't find ${req.originalUrl} on this server!`
   });
 });
 
-// Error handling middleware (must be last)
-app.use(errorHandler);
+// Global error handling middleware
+app.use((err, req, res, next) => {
+  err.statusCode = err.statusCode || 500;
+  err.status = err.status || 'error';
+
+  if (process.env.NODE_ENV === 'development') {
+    res.status(err.statusCode).json({
+      status: err.status,
+      error: err,
+      message: err.message,
+      stack: err.stack
+    });
+  } else {
+    // Production error response
+    res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message
+    });
+  }
+});
 
 module.exports = app;
