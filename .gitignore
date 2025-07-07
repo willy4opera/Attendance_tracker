@@ -117,3 +117,22 @@ dump.rdb
 TODO.md
 NOTES.md
 .secrets/
+
+# Markdown files (except README.md)
+*.md
+!README.md
+
+# Test directories
+backend/Test/
+backend/tests/
+
+# Documentation files (except main README)
+docs/*.md
+!docs/README.md
+
+# Ignore all markdown files except README.md
+*.md
+!README.md
+
+# Backend Test directory (local tests)
+backend/Test/
