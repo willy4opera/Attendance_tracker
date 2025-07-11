@@ -73,14 +73,37 @@ class AuthService {
 
   async getCurrentUser() {
     try {
+      // First try to get user data from /users/me
       const response = await api.get<UserResponse>('/users/me');
+      let userData;
+      
       // Handle both possible response structures
       if (response.data.data) {
         // If data is nested, extract it
-        return response.data.data.user || response.data.data;
+        userData = response.data.data.user || response.data.data;
+      } else {
+        // If data is at root level
+        userData = response.data;
       }
-      // If data is at root level
-      return response.data;
+      
+      // If we don't have profilePicture, try to fetch from profile endpoint
+      if (!userData.profilePicture) {
+        try {
+          const profileResponse = await api.get('/users/profile');
+          if (profileResponse.data.success && profileResponse.data.data) {
+            const profileData = profileResponse.data.data;
+            // Merge profile data with user data
+            userData = {
+              ...userData,
+              profilePicture: profileData.profilePicture || profileData.profilePictureUrl
+            };
+          }
+        } catch (profileError) {
+          console.log('Could not fetch profile picture:', profileError);
+        }
+      }
+      
+      return userData;
     } catch (error) {
       console.error('Error fetching current user:', error);
       throw error;

@@ -5,6 +5,11 @@ const sessionRoutes = require('./sessionRoutes');
 const attendanceRoutes = require('./attendanceRoutes');
 const departmentRoutes = require('./department.routes');
 const projectRoutes = require('./project.routes');
+const boardRoutes = require('./board.routes');
+const taskRoutes = require('./task.routes');
+const commentRoutes = require('./comment.routes');
+const activityRoutes = require('./activity.routes');
+const notificationRoutes = require('./notification.routes');
 // Import other route modules as they are created
 // const analyticsRoutes = require('./analyticsRoutes');
 
@@ -27,10 +32,18 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/departments', departmentRoutes);
 router.use('/projects', projectRoutes);
+router.use('/boards', boardRoutes);
+router.use('/tasks', taskRoutes);
+router.use('/comments', commentRoutes);
+router.use('/activities', activityRoutes);
+router.use('/notifications', notificationRoutes);
 router.use('/sessions', sessionRoutes);
 router.use('/attendance', attendanceRoutes);
 router.use('/files', require('./fileRoutes'));
+router.use('/youtube', require('./youtube.routes'));
 router.use('/qrcode', require('./qrcodeRoutes'));
 
-module.exports = router;
+router.use('/test-comment-upload', require('./test-comment-upload.routes'));
+router.use('/debug-upload', require('./debug-upload.routes'));
 router.use('/test', require('./test.routes'));
+module.exports = router;

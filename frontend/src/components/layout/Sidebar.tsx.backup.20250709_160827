@@ -1,0 +1,266 @@
+import React, { useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { 
+  AiOutlineDashboard, 
+  AiOutlineCalendar, 
+  AiOutlineCheckCircle,
+  AiOutlineUser,
+  AiOutlineTeam,
+  AiOutlineFile,
+  AiOutlineQrcode,
+  AiOutlineSetting,
+  AiOutlineLogout,
+  AiOutlineMenu,
+  AiOutlineClose,
+  AiOutlineMail,
+  AiOutlineProject,
+} from 'react-icons/ai'
+import { FaChartBar } from 'react-icons/fa'
+import theme from '../../config/theme'
+
+interface MenuItem {
+  name: string
+  path: string
+  icon: React.ReactNode
+  roles?: string[]
+}
+
+interface Department {
+  id: number
+  name: string
+  code: string
+}
+
+interface SidebarProps {
+  user: { 
+    id: string | number
+    email: string
+    firstName: string
+    lastName: string
+    role: string
+    isEmailVerified?: boolean
+    emailVerified?: boolean // backward compatibility
+    department?: Department | null
+    profilePicture?: string
+  } | null
+  onLogout: () => void
+}
+
+export default function Sidebar({ user, onLogout }: SidebarProps) {
+  const location = useLocation()
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [imageError, setImageError] = useState(false)
+  
+  // Check both possible field names for email verification status
+  const isEmailVerified = user?.isEmailVerified ?? user?.emailVerified ?? false
+
+  const menuItems: MenuItem[] = [
+    {
+      name: 'Dashboard',
+      path: '/dashboard',
+      icon: <AiOutlineDashboard className="w-5 h-5" />
+    },
+    {
+      name: 'Projects',
+      path: '/projects',
+      icon: <AiOutlineProject className="w-5 h-5" />
+    },
+    {
+      name: 'Sessions',
+      path: '/sessions',
+      icon: <AiOutlineCalendar className="w-5 h-5" />
+    },
+    {
+      name: 'My Attendance',
+      path: '/attendance',
+      icon: <AiOutlineCheckCircle className="w-5 h-5" />
+    },
+    {
+      name: 'QR Scanner',
+      path: '/qr-scanner',
+      icon: <AiOutlineQrcode className="w-5 h-5" />
+    },
+    {
+      name: 'Reports',
+      path: '/reports',
+      icon: <FaChartBar className="w-5 h-5" />
+    },
+    {
+      name: 'Files',
+      path: '/files',
+      icon: <AiOutlineFile className="w-5 h-5" />
+    },
+    {
+      name: 'Users',
+      path: '/users',
+      icon: <AiOutlineTeam className="w-5 h-5" />,
+      roles: ['admin', 'moderator']
+    },
+    {
+      name: 'Departments',
+      path: '/departments',
+      icon: <AiOutlineTeam className="w-5 h-5" />,
+      roles: ['admin', 'moderator']
+    },
+    {
+      name: 'Profile',
+      path: '/profile',
+      icon: <AiOutlineUser className="w-5 h-5" />
+    },
+    {
+      name: 'Settings',
+      path: '/settings',
+      icon: <AiOutlineSetting className="w-5 h-5" />,
+      roles: ['admin']
+    }
+  ]
+
+  const filteredMenuItems = menuItems.filter(item => {
+    if (!item.roles) return true
+    return item.roles.includes(user?.role || 'user')
+  })
+
+  // Function to get the image URL
+  const getImageUrl = (url: string | undefined) => {
+    if (!url) return null;
+    
+    // If it's already a full URL, return it
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // For relative URLs, let Vite's proxy handle it
+    return url;
+  };
+
+  const profilePictureUrl = getImageUrl(user?.profilePicture);
+
+  const isActive = (path: string) => location.pathname === path
+
+  return (
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsMobileOpen(!isMobileOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg"
+        style={{ 
+          backgroundColor: theme.colors.primary,
+          color: theme.colors.secondary 
+        }}
+      >
+        {isMobileOpen ? <AiOutlineClose className="w-6 h-6" /> : <AiOutlineMenu className="w-6 h-6" />}
+      </button>
+
+      {/* Sidebar */}
+      <div
+        className={`fixed left-0 top-0 h-full bg-white shadow-lg transition-all duration-300 z-40 ${
+          isCollapsed ? 'w-20' : 'w-64'
+        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        style={{ backgroundColor: theme.colors.background.paper }}
+      >
+        {/* Logo Section */}
+        <div className="p-4 border-b flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <img src="/images/logo.png" alt="Logo" className="h-10 w-10" />
+            {!isCollapsed && (
+              <h2 className="font-bold text-lg" style={{ color: theme.colors.secondary }}>
+                Attendance
+              </h2>
+            )}
+          </div>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden lg:block p-1 rounded hover:bg-gray-100"
+          >
+            <AiOutlineMenu className="w-5 h-5" style={{ color: theme.colors.secondary }} />
+          </button>
+        </div>
+
+        {/* User Info */}
+        <div className="p-4 border-b">
+          <div className="flex items-center space-x-3">
+            {profilePictureUrl && !imageError ? (
+              <img
+                src={profilePictureUrl}
+                alt={`${user?.firstName} ${user?.lastName}`}
+                className="w-10 h-10 rounded-full object-cover"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <div 
+                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
+                style={{ backgroundColor: theme.colors.primary, color: theme.colors.secondary }}
+              >
+                {user?.firstName?.[0]?.toUpperCase()}{user?.lastName?.[0]?.toUpperCase()}
+              </div>
+            )}
+            {!isCollapsed && (
+              <div>
+                <p className="font-medium text-sm" style={{ color: theme.colors.secondary }}>
+                  {user?.firstName} {user?.lastName}
+                </p>
+                <p className="text-xs" style={{ color: theme.colors.text.secondary }}>
+                  {user?.role}
+                  {user?.department && ` • ${user.department.name}`}
+                </p>
+                {!isEmailVerified && (
+                  <p className="text-xs text-red-500 flex items-center gap-1">
+                    <AiOutlineMail className="w-3 h-3" />
+                    Verify email
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto p-4">
+          <ul className="space-y-2">
+            {filteredMenuItems.map((item) => (
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                    isActive(item.path) 
+                      ? 'text-white' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                  style={{
+                    backgroundColor: isActive(item.path) ? theme.colors.primary : 'transparent',
+                    color: isActive(item.path) ? theme.colors.secondary : theme.colors.text.primary
+                  }}
+                  onClick={() => setIsMobileOpen(false)}
+                >
+                  {item.icon}
+                  {!isCollapsed && <span>{item.name}</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        {/* Logout Button */}
+        <div className="p-4 border-t">
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors hover:bg-red-50"
+            style={{ color: theme.colors.error }}
+          >
+            <AiOutlineLogout className="w-5 h-5" />
+            {!isCollapsed && <span>Logout</span>}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Overlay */}
+      {isMobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+    </>
+  )
+}

@@ -37,6 +37,7 @@ const updateProjectValidation = [
 
 // Routes
 router.use(protect); // All routes require authentication
+console.log("🚀 Project routes - protect middleware applied");
 
 // Get all projects with filtering
 router.get('/', projectController.getAll);
@@ -49,7 +50,7 @@ router.get('/:id',
 );
 
 // Admin and moderator routes
-router.use(restrictTo(['admin', 'moderator']));
+router.use(restrictTo('admin', 'moderator'));
 
 // Create new project
 router.post('/',
@@ -76,7 +77,7 @@ router.post('/:id/members',
 );
 
 // Admin-only routes
-router.use(restrictTo(['admin']));
+router.use(restrictTo('admin'));
 
 // Delete project
 router.delete('/:id',

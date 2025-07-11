@@ -1,0 +1,62 @@
+const express = require('express');
+const router = express.Router();
+const commentController = require('../controllers/comment.controller');
+const { protect } = require('../middleware/auth');
+const { validateRequest } = require('../middleware/validation.middleware');
+const { body, param, query } = require('express-validator');
+
+// Validation rules
+const createCommentValidation = [
+  body('taskId').isInt().withMessage('Valid task ID is required'),
+  body('content').notEmpty().withMessage('Comment content is required'),
+  body('parentId').optional().isInt().withMessage('Parent ID must be an integer'),
+  body('mentions').optional().isArray().withMessage('Mentions must be an array')
+];
+
+const updateCommentValidation = [
+  param('commentId').isInt().withMessage('Valid comment ID is required'),
+  body('content').notEmpty().withMessage('Comment content is required')
+];
+
+// All routes require authentication
+router.use(protect);
+
+// Create comment
+router.post('/',
+  createCommentValidation,
+  validateRequest,
+  commentController.createComment
+);
+
+// Get comments for a task
+router.get('/task/:taskId',
+  param('taskId').isInt().withMessage('Valid task ID is required'),
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
+  validateRequest,
+  commentController.getTaskComments
+);
+
+// Update comment
+router.put('/:commentId',
+  updateCommentValidation,
+  validateRequest,
+  commentController.updateComment
+);
+
+// Delete comment
+router.delete('/:commentId',
+  param('commentId').isInt().withMessage('Valid comment ID is required'),
+  validateRequest,
+  commentController.deleteComment
+);
+
+// Like/unlike comment
+router.post('/:commentId/like',
+  param('commentId').isInt().withMessage('Valid comment ID is required'),
+  body('reactionType').optional().isIn(['like', 'love', 'laugh', 'wow', 'sad', 'angry']).withMessage('Invalid reaction type'),
+  validateRequest,
+  commentController.toggleCommentLike
+);
+
+module.exports = router;

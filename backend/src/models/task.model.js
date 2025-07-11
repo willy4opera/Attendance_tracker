@@ -23,6 +23,7 @@ const Task = sequelize.define('Task', {
   taskListId: {
     type: DataTypes.INTEGER,
     allowNull: false,
+    field: 'task_list_id',
     references: {
       model: 'TaskLists',
       key: 'id'
@@ -34,16 +35,18 @@ const Task = sequelize.define('Task', {
     defaultValue: 0
   },
   createdBy: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: false,
+    field: 'created_by',
     references: {
       model: 'Users',
       key: 'id'
     }
   },
   assignedTo: {
-    type: DataTypes.JSON,
-    defaultValue: [] // Array of user IDs
+    type: DataTypes.ARRAY(DataTypes.INTEGER),
+    field: 'assigned_to',
+    defaultValue: []
   },
   priority: {
     type: DataTypes.ENUM('low', 'medium', 'high', 'urgent'),
@@ -55,46 +58,61 @@ const Task = sequelize.define('Task', {
   },
   dueDate: {
     type: DataTypes.DATE,
+    field: 'due_date',
     allowNull: true
   },
   startDate: {
     type: DataTypes.DATE,
+    field: 'start_date',
     allowNull: true
   },
   completedAt: {
     type: DataTypes.DATE,
+    field: 'completed_at',
     allowNull: true
   },
   estimatedHours: {
     type: DataTypes.DECIMAL(5, 2),
+    field: 'estimated_hours',
     allowNull: true
   },
   actualHours: {
     type: DataTypes.DECIMAL(5, 2),
+    field: 'actual_hours',
     allowNull: true
   },
   labels: {
-    type: DataTypes.JSON,
-    defaultValue: [] // Array of label objects {color, name}
+    type: DataTypes.ARRAY(DataTypes.STRING),
+    defaultValue: []
   },
   checklist: {
     type: DataTypes.JSON,
-    defaultValue: [] // Array of checklist items {id, text, completed}
+    defaultValue: []
   },
   attachmentCount: {
     type: DataTypes.INTEGER,
+    field: 'attachment_count',
     defaultValue: 0
   },
   commentCount: {
     type: DataTypes.INTEGER,
+    field: 'comment_count',
+    defaultValue: 0
+  },
+  watcherCount: {
+    type: DataTypes.INTEGER,
+    field: 'watcher_count',
+    allowNull: false,
     defaultValue: 0
   },
   coverImage: {
     type: DataTypes.STRING,
+    field: 'cover_image',
     allowNull: true
   },
   coverColor: {
     type: DataTypes.STRING(7),
+    field: 'cover_color',
     allowNull: true,
     validate: {
       is: /^#[0-9A-F]{6}$/i
@@ -102,14 +120,12 @@ const Task = sequelize.define('Task', {
   },
   isArchived: {
     type: DataTypes.BOOLEAN,
+    field: 'is_archived',
     defaultValue: false
-  },
-  watchers: {
-    type: DataTypes.JSON,
-    defaultValue: [] // Array of user IDs watching this task
   },
   customFields: {
     type: DataTypes.JSON,
+    field: 'custom_fields',
     defaultValue: {}
   },
   metadata: {
@@ -124,9 +140,10 @@ const Task = sequelize.define('Task', {
 }, {
   tableName: 'Tasks',
   timestamps: true,
+  underscored: true,
   indexes: [
     {
-      fields: ['taskListId', 'position']
+      fields: ['task_list_id', 'position']
     },
     {
       fields: ['status']
@@ -135,13 +152,16 @@ const Task = sequelize.define('Task', {
       fields: ['priority']
     },
     {
-      fields: ['dueDate']
+      fields: ['due_date']
     },
     {
-      fields: ['createdBy']
+      fields: ['created_by']
     },
     {
-      fields: ['isArchived']
+      fields: ['is_archived']
+    },
+    {
+      fields: ['watcher_count']
     }
   ]
 });

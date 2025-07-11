@@ -1,5 +1,6 @@
 const http = require('http');
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
 const app = require('./src/app');
 const { connectDB } = require('./src/config/database');
 const logger = require('./src/utils/logger');
@@ -9,20 +10,58 @@ const PORT = process.env.PORT || 5000;
 // Create HTTP server
 const server = http.createServer(app);
 
-// Initialize Socket.IO
+// Initialize Socket.IO with proper CORS configuration
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL || 'https://localhost:5173',
     credentials: true
   }
 });
 
-// Basic socket connection handler (stub for now)
+// Socket.IO authentication middleware
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth.token;
+    
+    if (!token) {
+      return next(new Error('Authentication error: No token provided'));
+    }
+
+    // Verify JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    socket.userId = decoded.id;
+    socket.user = decoded;
+    
+    logger.info(`Socket authenticated for user: ${decoded.id}`);
+    next();
+  } catch (error) {
+    logger.error('Socket authentication error:', error);
+    next(new Error('Authentication error'));
+  }
+});
+
+// Socket.IO connection handler
 io.on('connection', (socket) => {
-  logger.info('New socket connection:', socket.id);
+  logger.info(`New socket connection: ${socket.id} (User: ${socket.userId})`);
   
-  socket.on('disconnect', () => {
-    logger.info('Socket disconnected:', socket.id);
+  // Join user to their personal room
+  socket.join(`user_${socket.userId}`);
+  
+  // Handle subscription to channels
+  socket.on('subscribe', (channel) => {
+    socket.join(channel);
+    logger.info(`Socket ${socket.id} subscribed to ${channel}`);
+  });
+  
+  // Handle unsubscription from channels
+  socket.on('unsubscribe', (channel) => {
+    socket.leave(channel);
+    logger.info(`Socket ${socket.id} unsubscribed from ${channel}`);
+  });
+  
+  // Handle disconnect
+  socket.on('disconnect', (reason) => {
+    logger.info(`Socket disconnected: ${socket.id} (User: ${socket.userId}), reason: ${reason}`);
   });
 });
 

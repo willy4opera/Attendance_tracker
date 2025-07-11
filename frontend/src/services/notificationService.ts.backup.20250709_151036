@@ -1,0 +1,121 @@
+import api from './api';
+import type { ApiResponse, PaginatedResponse } from '../types';
+import type { Notification, NotificationSettings, NotificationPreferences } from '../types/notification';
+
+export interface NotificationFilters {
+  page?: number;
+  limit?: number;
+  type?: string;
+  isRead?: boolean;
+}
+
+export interface CreateNotificationData {
+  userId: number;
+  type: 'comment' | 'mention' | 'like' | 'task_assigned' | 'task_updated' | 'activity';
+  title: string;
+  message: string;
+  data: Record<string, any>;
+}
+
+class NotificationService {
+  // Get user notifications
+  async getUserNotifications(
+    userId: number,
+    filters: NotificationFilters = {}
+  ): Promise<ApiResponse<PaginatedResponse<Notification>>> {
+    const response = await api.get(`/notifications/user/${userId}`, {
+      params: filters,
+    });
+    return response.data;
+  }
+
+  // Get unread notification count
+  async getUnreadCount(userId: number): Promise<ApiResponse<{ count: number }>> {
+    const response = await api.get(`/notifications/user/${userId}/unread-count`);
+    return response.data;
+  }
+
+  // Mark notification as read
+  async markAsRead(notificationId: number): Promise<ApiResponse<void>> {
+    const response = await api.put(`/notifications/${notificationId}/read`);
+    return response.data;
+  }
+
+  // Mark all notifications as read
+  async markAllAsRead(userId: number): Promise<ApiResponse<void>> {
+    const response = await api.put(`/notifications/user/${userId}/read-all`);
+    return response.data;
+  }
+
+  // Delete notification
+  async deleteNotification(notificationId: number): Promise<ApiResponse<void>> {
+    const response = await api.delete(`/notifications/${notificationId}`);
+    return response.data;
+  }
+
+  // Create notification (usually called by system)
+  async createNotification(data: CreateNotificationData): Promise<ApiResponse<Notification>> {
+    const response = await api.post('/notifications', data);
+    return response.data;
+  }
+
+  // Get notification settings
+  async getNotificationSettings(userId: number): Promise<ApiResponse<NotificationSettings>> {
+    const response = await api.get(`/notifications/user/${userId}/settings`);
+    return response.data;
+  }
+
+  // Update notification settings
+  async updateNotificationSettings(
+    userId: number,
+    preferences: Partial<NotificationPreferences>
+  ): Promise<ApiResponse<NotificationSettings>> {
+    const response = await api.put(`/notifications/user/${userId}/settings`, {
+      preferences,
+    });
+    return response.data;
+  }
+
+  // Request permission for push notifications
+  async requestPushPermission(): Promise<boolean> {
+    if (!('Notification' in window)) {
+      console.warn('This browser does not support push notifications');
+      return false;
+    }
+
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
+  }
+
+  // Show browser notification
+  showBrowserNotification(title: string, options: NotificationOptions = {}) {
+    if (Notification.permission === 'granted') {
+      new Notification(title, {
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        ...options,
+      });
+    }
+  }
+
+  // Subscribe to push notifications
+  async subscribeToPush(userId: number): Promise<ApiResponse<void>> {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      throw new Error('Push notifications not supported');
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: process.env.VITE_VAPID_PUBLIC_KEY,
+    });
+
+    const response = await api.post('/notifications/push/subscribe', {
+      userId,
+      subscription,
+    });
+    return response.data;
+  }
+}
+
+export default new NotificationService();

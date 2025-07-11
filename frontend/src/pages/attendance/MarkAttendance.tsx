@@ -3,8 +3,8 @@ import { Search, UserCheck, Save } from 'lucide-react';
 import attendanceService from '../../services/attendanceService';
 import sessionService from '../../services/sessionService';
 import type { Session } from '../../services/sessionService';
-import userService from '../../services/userService';
-import type { User } from '../../services/userService';
+import userService from '../../services/user.service';
+import type { User } from '../../types';
 import { showErrorToast, showSuccessToast } from '../../utils/toastHelpers';
 
 interface AttendanceEntry {

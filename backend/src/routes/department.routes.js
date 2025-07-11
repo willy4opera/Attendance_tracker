@@ -42,7 +42,7 @@ router.get('/:id',
 );
 
 // Admin-only routes
-router.use(restrictTo(['admin']));
+router.use(restrictTo('admin'));
 
 // Create new department
 router.post('/', 

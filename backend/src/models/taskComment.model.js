@@ -10,14 +10,16 @@ const TaskComment = sequelize.define('TaskComment', {
   taskId: {
     type: DataTypes.INTEGER,
     allowNull: false,
+    field: 'task_id',
     references: {
       model: 'Tasks',
       key: 'id'
     }
   },
   userId: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: false,
+    field: 'user_id',
     references: {
       model: 'Users',
       key: 'id'
@@ -35,43 +37,59 @@ const TaskComment = sequelize.define('TaskComment', {
   parentId: {
     type: DataTypes.INTEGER,
     allowNull: true,
+    field: 'parent_id',
     references: {
       model: 'TaskComments',
       key: 'id'
     }
   },
-  mentions: {
-    type: DataTypes.JSON,
-    defaultValue: [] // Array of mentioned user IDs
+  likeCount: {
+    type: DataTypes.INTEGER,
+    field: 'like_count',
+    allowNull: false,
+    defaultValue: 0
   },
-  attachments: {
+  reactionSummary: {
     type: DataTypes.JSON,
-    defaultValue: [] // Array of attachment URLs
+    field: 'reaction_summary',
+    allowNull: true,
+    defaultValue: {}
   },
   isEdited: {
     type: DataTypes.BOOLEAN,
+    field: 'is_edited',
     defaultValue: false
   },
   editedAt: {
     type: DataTypes.DATE,
+    field: 'edited_at',
     allowNull: true
   },
-  reactions: {
+  attachments: {
     type: DataTypes.JSON,
-    defaultValue: {} // Object with emoji reactions and user IDs
+    allowNull: true,
+    defaultValue: [],
+    comment: 'Array of attachment objects with url, type, name properties'
   }
 }, {
   tableName: 'TaskComments',
   timestamps: true,
+  underscored: true,
   indexes: [
     {
-      fields: ['taskId']
+      fields: ['task_id']
     },
     {
-      fields: ['userId']
+      fields: ['user_id']
     },
     {
-      fields: ['parentId']
+      fields: ['parent_id']
+    },
+    {
+      fields: ['created_at']
+    },
+    {
+      fields: ['like_count']
     }
   ]
 });

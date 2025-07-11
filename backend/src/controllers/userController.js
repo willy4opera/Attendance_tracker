@@ -1,4 +1,4 @@
-const { User, Department, Project, Session, Attendance, UserProject, Task } = require('../models');
+const { User, Department, Project, Session, Attendance, UserProject, Task, UserFollowing } = require('../models');
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -999,6 +999,147 @@ class UserController {
       res.status(500).json({
         success: false,
         message: 'Error deactivating account',
+        error: error.message
+      });
+    }
+  }
+
+
+  // ==================== SOCIAL FEATURES ====================
+  
+  // Follow/unfollow a user
+  async toggleFollowUser(req, res) {
+    try {
+      const { userId } = req.params;
+
+      if (userId == req.user.id) {
+        return res.status(400).json({
+          success: false,
+          message: 'You cannot follow yourself'
+        });
+      }
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      // Check if already following
+      const existingFollow = await UserFollowing.findOne({
+        where: {
+          followerId: req.user.id,
+          followedId: userId
+        }
+      });
+
+      if (existingFollow) {
+        await existingFollow.destroy();
+        res.json({
+          success: true,
+          message: 'User unfollowed',
+          data: { following: false }
+        });
+      } else {
+        await UserFollowing.create({
+          followerId: req.user.id,
+          followedId: userId
+        });
+        res.json({
+          success: true,
+          message: 'User followed',
+          data: { following: true }
+        });
+      }
+
+      logger.info(`User ${req.user.id} ${existingFollow ? 'unfollowed' : 'followed'} user ${userId}`);
+    } catch (error) {
+      logger.error('Error toggling follow:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error toggling follow',
+        error: error.message
+      });
+    }
+  }
+
+  // Get user's followers
+  async getFollowers(req, res) {
+    try {
+      const { userId } = req.params;
+      const { page = 1, limit = 20 } = req.query;
+      const offset = (page - 1) * limit;
+
+      const followers = await UserFollowing.findAndCountAll({
+        where: { followedId: userId },
+        include: [
+          {
+            model: User,
+            as: 'follower',
+            attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: parseInt(limit),
+        offset
+      });
+
+      res.json({
+        success: true,
+        data: {
+          followers: followers.rows,
+          total: followers.count,
+          page: parseInt(page),
+          totalPages: Math.ceil(followers.count / limit)
+        }
+      });
+    } catch (error) {
+      logger.error('Error fetching followers:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching followers',
+        error: error.message
+      });
+    }
+  }
+
+  // Get user's following
+  async getFollowing(req, res) {
+    try {
+      const { userId } = req.params;
+      const { page = 1, limit = 20 } = req.query;
+      const offset = (page - 1) * limit;
+
+      const following = await UserFollowing.findAndCountAll({
+        where: { followerId: userId },
+        include: [
+          {
+            model: User,
+            as: 'followed',
+            attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: parseInt(limit),
+        offset
+      });
+
+      res.json({
+        success: true,
+        data: {
+          following: following.rows,
+          total: following.count,
+          page: parseInt(page),
+          totalPages: Math.ceil(following.count / limit)
+        }
+      });
+    } catch (error) {
+      logger.error('Error fetching following:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching following',
         error: error.message
       });
     }

@@ -46,10 +46,21 @@ const protect = async (req, res, next) => {
       });
     }
 
+    // DEBUG: Log user info
+    console.log('🔒 Auth Debug - User authenticated:', {
+      id: currentUser.id,
+      email: currentUser.email,
+      role: currentUser.role,
+      isActive: currentUser.isActive,
+      requestPath: req.path,
+      requestMethod: req.method
+    });
+
     // Grant access to protected route
     req.user = currentUser;
     next();
   } catch (error) {
+    console.error('🔒 Auth Error:', error);
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({
         status: 'fail',
@@ -71,12 +82,34 @@ const protect = async (req, res, next) => {
 
 const restrictTo = (...roles) => {
   return (req, res, next) => {
+    console.log('🔐 RestrictTo Debug:', {
+      userRole: req.user?.role,
+      allowedRoles: roles,
+      hasPermission: roles.includes(req.user?.role),
+      requestPath: req.path,
+      requestMethod: req.method,
+      userId: req.user?.id
+    });
+
     if (!roles.includes(req.user.role)) {
+      console.log('❌ Permission denied for user:', {
+        userRole: req.user.role,
+        allowedRoles: roles,
+        userId: req.user.id,
+        path: req.path
+      });
       return res.status(403).json({
         status: 'fail',
         message: 'You do not have permission to perform this action'
       });
     }
+    
+    console.log('✅ Permission granted for user:', {
+      userRole: req.user.role,
+      allowedRoles: roles,
+      userId: req.user.id,
+      path: req.path
+    });
     next();
   };
 };

@@ -40,8 +40,22 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           ws: true,
           secure: false,
+        },
+        '/uploads': {
+          target: env.VITE_BACKEND_URL || 'http://localhost:5000',
+          changeOrigin: true,
+          secure: false,
+        },
+      },
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          entryFileNames: 'assets/[name].[hash].js',
+          chunkFileNames: 'assets/[name].[hash].js',
+          assetFileNames: 'assets/[name].[hash].[ext]',
         }
       }
     }
-  }
-})
+  };
+});

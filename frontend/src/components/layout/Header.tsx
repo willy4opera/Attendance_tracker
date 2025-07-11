@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
-import { AiOutlineBell, AiOutlineSearch, AiOutlineMail } from 'react-icons/ai';
+import { AiOutlineSearch, AiOutlineMail, AiOutlineUser } from 'react-icons/ai';
 import theme from '../../config/theme';
 import EmailVerificationModal from '../modals/EmailVerificationModal';
+import NotificationBell from '../notifications/NotificationBell';
 
 interface User {
-  id: string | number;
+  id?: string | number;
+  _id?: string;
   email: string;
   firstName: string;
   lastName: string;
   isEmailVerified?: boolean;
   emailVerified?: boolean; // Keep for backward compatibility
+  profilePicture?: string;
 }
 
 interface HeaderProps {
@@ -19,9 +22,25 @@ interface HeaderProps {
 
 export default function Header({ title, user }: HeaderProps) {
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [imageError, setImageError] = useState(false);
   
   // Check both possible field names for email verification status
   const isEmailVerified = user?.isEmailVerified ?? user?.emailVerified ?? false;
+
+  // Function to get the image URL
+  const getImageUrl = (url: string | undefined) => {
+    if (!url) return null;
+    
+    // If it's already a full URL, return it
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // For relative URLs, let Vite's proxy handle it
+    return url;
+  };
+
+  const profilePictureUrl = getImageUrl(user?.profilePicture);
 
   return (
     <>
@@ -67,23 +86,25 @@ export default function Header({ title, user }: HeaderProps) {
           )}
 
           {/* Notifications */}
-          <button 
-            className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            style={{ color: theme.colors.text.primary }}
-          >
-            <AiOutlineBell className="w-5 h-5 lg:w-6 lg:h-6" />
-            <span 
-              className="absolute top-0 right-0 w-2 h-2 rounded-full"
-              style={{ backgroundColor: theme.colors.error }}
-            />
-          </button>
+          <NotificationBell className="rounded-lg hover:bg-gray-100 transition-colors" />
 
           {/* User Avatar */}
-          <div 
-            className="w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center text-white font-semibold cursor-pointer text-sm lg:text-base"
-            style={{ backgroundColor: theme.colors.primary, color: theme.colors.secondary }}
-          >
-            {user?.firstName?.[0]?.toUpperCase()}{user?.lastName?.[0]?.toUpperCase()}
+          <div className="relative w-8 h-8 lg:w-10 lg:h-10">
+            {profilePictureUrl && !imageError ? (
+              <img
+                src={profilePictureUrl}
+                alt={`${user?.firstName} ${user?.lastName}`}
+                className="w-full h-full rounded-full object-cover cursor-pointer"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <div 
+                className="w-full h-full rounded-full flex items-center justify-center text-white font-semibold cursor-pointer text-sm lg:text-base"
+                style={{ backgroundColor: theme.colors.primary, color: theme.colors.secondary }}
+              >
+                {user?.firstName?.[0]?.toUpperCase()}{user?.lastName?.[0]?.toUpperCase()}
+              </div>
+            )}
           </div>
         </div>
       </header>

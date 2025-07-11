@@ -10,21 +10,23 @@ const BoardMember = sequelize.define('BoardMember', {
   boardId: {
     type: DataTypes.INTEGER,
     allowNull: false,
+    field: 'board_id',
     references: {
       model: 'Boards',
       key: 'id'
     }
   },
   userId: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: false,
+    field: 'user_id',
     references: {
       model: 'Users',
       key: 'id'
     }
   },
   role: {
-    type: DataTypes.ENUM('viewer', 'member', 'admin'),
+    type: DataTypes.ENUM('viewer', 'member', 'admin', 'owner'),
     defaultValue: 'member'
   },
   permissions: {
@@ -44,25 +46,28 @@ const BoardMember = sequelize.define('BoardMember', {
   },
   joinedAt: {
     type: DataTypes.DATE,
+    field: 'joined_at',
     defaultValue: DataTypes.NOW
   },
   isActive: {
     type: DataTypes.BOOLEAN,
+    field: 'is_active',
     defaultValue: true
   }
 }, {
   tableName: 'BoardMembers',
   timestamps: true,
+  underscored: true,
   indexes: [
     {
       unique: true,
-      fields: ['boardId', 'userId']
+      fields: ['board_id', 'user_id']
     },
     {
       fields: ['role']
     },
     {
-      fields: ['isActive']
+      fields: ['is_active']
     }
   ]
 });

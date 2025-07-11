@@ -1,0 +1,173 @@
+// Board types
+export interface Board {
+  id: string
+  name: string
+  description?: string
+  projectId: string
+  project?: {
+    id: string
+    name: string
+    code: string
+  }
+  visibility: BoardVisibility
+  isArchived: boolean
+  backgroundColor?: string
+  backgroundImage?: string
+  lists?: BoardList[]
+  members?: BoardMember[]
+  owner?: User
+  ownerId?: string
+  settings?: BoardSettings
+  metadata?: {
+    customFields?: Record<string, unknown>
+    createdBy?: string
+    createdAt?: string
+    lastModifiedBy?: string
+    lastModifiedAt?: string
+  }
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BoardList {
+  id: string
+  boardId: string
+  name: string
+  position: number
+  isArchived: boolean
+  tasks?: Task[]
+  taskCount?: number
+  metadata?: {
+    color?: string
+    customFields?: Record<string, unknown>
+  }
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BoardMember {
+  id: string
+  boardId: string
+  userId: string
+  role: BoardRole
+  user: {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    profilePicture?: string
+  }
+  joinedAt: string
+}
+
+export interface BoardSettings {
+  allowComments: boolean
+  allowAttachments: boolean
+  allowLabels: boolean
+  allowDueDates: boolean
+  allowVoting: boolean
+  cardAging: boolean
+  permissions: {
+    canAddMembers: boolean
+    canCreateLists: boolean
+    canArchiveBoard: boolean
+  }
+}
+
+export interface BoardStats {
+  totalTasks: number
+  completedTasks: number
+  inProgressTasks: number
+  todoTasks: number
+  overdueTasks: number
+  listCount: number
+  memberCount: number
+  recentActivity: number
+}
+
+export interface BoardWithStats extends Board {
+  stats?: BoardStats
+}
+
+export interface BoardsResponse {
+  boards: Board[]
+  total: number
+  page: number
+  totalPages: number
+}
+
+export interface CreateBoardDto {
+  name: string
+  description?: string
+  projectId: string
+  visibility: BoardVisibility
+  backgroundColor?: string
+  backgroundImage?: string
+  settings?: Partial<BoardSettings>
+  memberIds?: string[]
+  metadata?: Record<string, unknown>
+}
+
+export interface UpdateBoardDto extends Partial<CreateBoardDto> {
+  isArchived?: boolean
+}
+
+export interface CreateBoardListDto {
+  name: string
+  position: number
+  metadata?: Record<string, unknown>
+}
+
+export interface UpdateBoardListDto extends Partial<CreateBoardListDto> {
+  isArchived?: boolean
+}
+
+export enum BoardVisibility {
+  PRIVATE = 'private',
+  PROJECT = 'project',
+  DEPARTMENT = 'department',
+  PUBLIC = 'public'
+}
+
+export enum BoardRole {
+  OWNER = 'owner',
+  ADMIN = 'admin',
+  MEMBER = 'member',
+  VIEWER = 'viewer'
+}
+
+// Import types from other files
+interface User {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  profilePicture?: string
+}
+
+interface Task {
+  id: string
+  title: string
+  description?: string
+  position: number
+  listId: string
+  assignees?: TaskAssignee[]
+  labels?: TaskLabel[]
+  dueDate?: string
+  isCompleted: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+interface TaskAssignee {
+  id: string
+  userId: string
+  taskId: string
+  user: User
+}
+
+interface TaskLabel {
+  id: string
+  name: string
+  color: string
+}

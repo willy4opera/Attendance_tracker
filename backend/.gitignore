@@ -3,3 +3,6 @@
 src/seeders/
 *.seed.js
 *.seeder.js
+
+# YouTube tokens
+config/youtube-tokens.json

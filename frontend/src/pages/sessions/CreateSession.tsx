@@ -109,7 +109,8 @@ export default function CreateSession() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gray-50 px-4 lg:px-8 py-4 lg:py-6">
+      <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <button
           onClick={() => navigate('/sessions')}
@@ -304,6 +305,7 @@ export default function CreateSession() {
           </div>
         </form>
       </div>
+    </div>
     </div>
   );
 }

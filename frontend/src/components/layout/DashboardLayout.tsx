@@ -48,16 +48,14 @@ export default function DashboardLayout({ title = 'Dashboard' }: DashboardLayout
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:ml-64 min-h-screen">
-        {/* Header - Full width with minimal padding */}
+        {/* Header - Full width */}
         <div className="bg-white shadow-sm" style={{ backgroundColor: theme.colors.background.paper }}>
           <Header title={title} user={user} />
         </div>
 
-        {/* Page Content - Centered with max width */}
+        {/* Page Content - Full width to match header */}
         <main className="flex-1 overflow-y-auto" style={{ backgroundColor: theme.colors.background.default }}>
-          <div className="max-w-7xl mx-auto w-full">
-            <Outlet context={{ user }} />
-          </div>
+          <Outlet context={{ user }} />
         </main>
       </div>
     </div>

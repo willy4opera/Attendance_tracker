@@ -1,15 +1,17 @@
 import React, { useState } from 'react'
 import { AiOutlineClose } from 'react-icons/ai'
 import api from '../../services/api'
-import { toastSuccess, toastError } from '../../utils/toastHelpers'
+import type { Department } from '../../types'
+import notify from '../../utils/notifications'
 import theme from '../../config/theme'
 
 interface CreateUserModalProps {
   onClose: () => void
   onSuccess: () => void
+  departments: Department[]
 }
 
-export default function CreateUserModal({ onClose, onSuccess }: CreateUserModalProps) {
+export default function CreateUserModal({ onClose, onSuccess, departments }: CreateUserModalProps) {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -26,38 +28,40 @@ export default function CreateUserModal({ onClose, onSuccess }: CreateUserModalP
     e.preventDefault()
     
     if (formData.password !== formData.passwordConfirm) {
-      toastError('Passwords do not match')
+      notify.toast.error('Passwords do not match')
       return
     }
 
     if (formData.password.length < 6) {
-      toastError('Password must be at least 6 characters')
+      notify.toast.error('Password must be at least 6 characters')
       return
     }
 
-    setLoading(true)
-    try {
-      const dataToSend = {
-        ...formData,
-        departmentId: formData.departmentId ? parseInt(formData.departmentId) : null
-      }
-      delete dataToSend.passwordConfirm
+    const success = await notify.actions.submitFormWithFeedback(
+      async () => {
+        const dataToSend = {
+          ...formData,
+          departmentId: formData.departmentId ? parseInt(formData.departmentId) : null
+        }
+        delete dataToSend.passwordConfirm
 
-      await api.post('/users', dataToSend)
-      toastSuccess('User created successfully')
+        await api.post('/users', dataToSend)
+      },
+      'Creating User',
+      'User created successfully',
+      'Failed to create user'
+    )
+
+    if (success) {
       onSuccess()
-    } catch (error: any) {
-      toastError(error.response?.data?.message || 'Failed to create user')
-    } finally {
-      setLoading(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold" style={{ color: theme.colors.secondary }}>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
+      <div className="bg-white rounded-lg w-full max-w-lg max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b p-3 sm:p-4 flex items-center justify-between">
+          <h2 className="text-lg sm:text-xl font-bold" style={{ color: theme.colors.secondary }}>
             Create New User
           </h2>
           <button
@@ -68,8 +72,9 @@ export default function CreateUserModal({ onClose, onSuccess }: CreateUserModalP
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="p-3 sm:p-6 space-y-4">
+          {/* Name Fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.secondary }}>
                 First Name *
@@ -79,8 +84,9 @@ export default function CreateUserModal({ onClose, onSuccess }: CreateUserModalP
                 required
                 value={formData.firstName}
                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base"
                 style={{ borderColor: theme.colors.primary }}
+                placeholder="Enter first name"
               />
             </div>
             <div>
@@ -92,12 +98,14 @@ export default function CreateUserModal({ onClose, onSuccess }: CreateUserModalP
                 required
                 value={formData.lastName}
                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base"
                 style={{ borderColor: theme.colors.primary }}
+                placeholder="Enter last name"
               />
             </div>
           </div>
 
+          {/* Email */}
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.secondary }}>
               Email *
@@ -107,11 +115,13 @@ export default function CreateUserModal({ onClose, onSuccess }: CreateUserModalP
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base"
               style={{ borderColor: theme.colors.primary }}
+              placeholder="Enter email address"
             />
           </div>
 
+          {/* Phone Number */}
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.secondary }}>
               Phone Number
@@ -120,12 +130,14 @@ export default function CreateUserModal({ onClose, onSuccess }: CreateUserModalP
               type="tel"
               value={formData.phoneNumber}
               onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base"
               style={{ borderColor: theme.colors.primary }}
+              placeholder="Enter phone number"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Password Fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.secondary }}>
                 Password *
@@ -135,9 +147,10 @@ export default function CreateUserModal({ onClose, onSuccess }: CreateUserModalP
                 required
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base"
                 style={{ borderColor: theme.colors.primary }}
                 minLength={6}
+                placeholder="Minimum 6 characters"
               />
             </div>
             <div>
@@ -149,14 +162,16 @@ export default function CreateUserModal({ onClose, onSuccess }: CreateUserModalP
                 required
                 value={formData.passwordConfirm}
                 onChange={(e) => setFormData({ ...formData, passwordConfirm: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base"
                 style={{ borderColor: theme.colors.primary }}
                 minLength={6}
+                placeholder="Confirm password"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Role and Department */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.secondary }}>
                 Role *
@@ -164,7 +179,7 @@ export default function CreateUserModal({ onClose, onSuccess }: CreateUserModalP
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base"
                 style={{ borderColor: theme.colors.primary }}
               >
                 <option value="user">User</option>
@@ -179,20 +194,34 @@ export default function CreateUserModal({ onClose, onSuccess }: CreateUserModalP
               <select
                 value={formData.departmentId}
                 onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base"
                 style={{ borderColor: theme.colors.primary }}
               >
                 <option value="">No Department</option>
-                {/* Department options would be loaded dynamically */}
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name} ({dept.code})
+                  </option>
+                ))}
               </select>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
+          {/* Password Requirements Info */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <h4 className="text-sm font-medium text-blue-800 mb-1">Password Requirements:</h4>
+            <ul className="text-xs text-blue-600 space-y-1">
+              <li>• Minimum 6 characters</li>
+              <li>• Must match confirmation</li>
+            </ul>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
+              className="w-full sm:w-auto px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
               style={{ borderColor: theme.colors.primary }}
             >
               Cancel
@@ -200,7 +229,7 @@ export default function CreateUserModal({ onClose, onSuccess }: CreateUserModalP
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 rounded-lg text-white transition-colors disabled:opacity-50"
+              className="w-full sm:w-auto px-4 py-2 rounded-lg text-white transition-colors disabled:opacity-50 text-sm sm:text-base"
               style={{ 
                 backgroundColor: theme.colors.primary,
                 color: theme.colors.secondary

@@ -10,74 +10,76 @@ const TaskActivity = sequelize.define('TaskActivity', {
   taskId: {
     type: DataTypes.INTEGER,
     allowNull: false,
+    field: 'task_id',
     references: {
       model: 'Tasks',
       key: 'id'
     }
   },
   userId: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: false,
+    field: 'user_id',
     references: {
       model: 'Users',
       key: 'id'
     }
   },
-  action: {
-    type: DataTypes.ENUM(
-      'created',
-      'moved',
-      'renamed',
-      'description_updated',
-      'assigned',
-      'unassigned',
-      'due_date_added',
-      'due_date_changed',
-      'due_date_removed',
-      'label_added',
-      'label_removed',
-      'checklist_added',
-      'checklist_item_checked',
-      'checklist_item_unchecked',
-      'attachment_added',
-      'attachment_removed',
-      'comment_added',
-      'archived',
-      'unarchived',
-      'completed',
-      'reopened',
-      'priority_changed',
-      'status_changed'
-    ),
-    allowNull: false
-  },
-  details: {
-    type: DataTypes.JSON,
-    defaultValue: {} // Store action-specific details
-  },
   boardId: {
     type: DataTypes.INTEGER,
-    allowNull: true,
+    allowNull: false,
+    field: 'board_id',
     references: {
       model: 'Boards',
       key: 'id'
     }
+  },
+  activityType: {
+    type: DataTypes.STRING(50),
+    field: 'action',
+    allowNull: false,
+    defaultValue: 'updated'
+  },
+  details: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: {}
+  },
+  metadata: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {}
+  },
+  visibility: {
+    type: DataTypes.ENUM('public', 'board', 'private'),
+    allowNull: false,
+    defaultValue: 'board'
   }
 }, {
   tableName: 'TaskActivities',
   timestamps: true,
+  underscored: true,
   indexes: [
     {
-      fields: ['taskId']
+      fields: ['task_id']
     },
     {
-      fields: ['userId']
+      fields: ['user_id']
+    },
+    {
+      fields: ['board_id']
     },
     {
       fields: ['action']
     },
     {
-      fields: ['createdAt']
+      fields: ['visibility']
+    },
+    {
+      fields: ['created_at']
+    },
+    {
+      fields: ['user_id', 'created_at']
     }
   ]
 });

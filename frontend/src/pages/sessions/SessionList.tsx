@@ -219,7 +219,9 @@ const SessionList: React.FC = () => {
   );
 
   return (
-    <div className="p-6">
+    <div className="min-h-screen bg-gray-50 px-4 lg:px-8 py-4 lg:py-6">
+      <div className="max-w-7xl mx-auto">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-6">
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Sessions</h1>
         {isAdminOrModerator && (
@@ -231,6 +233,7 @@ const SessionList: React.FC = () => {
             Create Session
           </Link>
         )}
+      </div>
       </div>
 
       {/* Search and Filters */}
@@ -322,6 +325,7 @@ const SessionList: React.FC = () => {
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 };

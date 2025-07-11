@@ -1,0 +1,585 @@
+import React, { useState, useRef } from 'react';
+import BrandedVideoPlayer from '../../common/BrandedVideoPlayer';
+import {
+  FaImage,
+  FaVideo,
+  FaPaperclip,
+  FaTimes,
+  FaThumbsUp,
+  FaComment,
+  FaShare,
+  FaSmile,
+  FaHeart,
+  FaLaugh,
+  FaSurprise,
+  FaSadTear,
+  FaAngry,
+  FaPlay,
+  FaYoutube
+} from 'react-icons/fa';
+import UserAvatar from '../../social/UserAvatar';
+import commentService from '../../../services/commentService';
+import { showToast } from '../../../utils/toast';
+import type { Comment, User } from '../../../types/comment';
+import theme from '../../../config/theme';
+
+interface CommentsSectionProps {
+  comments: Comment[];
+  isCommentsLoading: boolean;
+  commentsError: any;
+  onAddComment: (newComment: string, attachments: File[], replyingTo: number | null) => Promise<void>;
+  onRefreshComments: () => void;
+  taskId: number;
+  currentUser: User | null;
+}
+
+const EMOJI_REACTIONS = [
+  { emoji: '👍', type: 'like', icon: FaThumbsUp },
+  { emoji: '❤️', type: 'love', icon: FaHeart },
+  { emoji: '😂', type: 'laugh', icon: FaLaugh },
+  { emoji: '😮', type: 'wow', icon: FaSurprise },
+  { emoji: '😢', type: 'sad', icon: FaSadTear },
+  { emoji: '😡', type: 'angry', icon: FaAngry }
+];
+
+const EMOJI_SUGGESTIONS = [
+  '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
+  '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
+  '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩',
+  '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣',
+  '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬',
+  '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗',
+  '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯',
+  '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐',
+  '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈',
+  '👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉',
+  '🔥', '💯', '💪', '👏', '🙌', '🤝', '👐', '🙏', '✨', '🎉'
+];
+
+const CommentsSection: React.FC<CommentsSectionProps> = ({
+  comments,
+  isCommentsLoading,
+  commentsError,
+  onAddComment,
+  onRefreshComments,
+  taskId,
+  currentUser
+}) => {
+  const [newComment, setNewComment] = useState("");
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showReactionPicker, setShowReactionPicker] = useState<number | null>(null);
+  const [showReplyModal, setShowReplyModal] = useState<boolean>(false);
+  const [replyText, setReplyText] = useState("");
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [expandedReplies, setExpandedReplies] = useState<number[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleEmojiClick = (emoji: string) => {
+    setNewComment((prev) => prev + emoji);
+    setShowEmojiPicker(false);
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    
+    // Check total number of attachments
+    const currentImages = attachments.filter(f => f.type.startsWith('image/')).length;
+    const currentVideos = attachments.filter(f => f.type.startsWith('video/')).length;
+    const newImages = files.filter(f => f.type.startsWith('image/')).length;
+    const newVideos = files.filter(f => f.type.startsWith('video/')).length;
+    
+    if (currentImages + newImages > 5) {
+      showToast.error('Maximum 5 images allowed');
+      return;
+    }
+    
+    if (currentVideos + newVideos > 2) {
+      showToast.error('Maximum 2 videos allowed');
+      return;
+    }
+    
+    // Check file sizes
+    const oversizedFiles = files.filter(f => f.size > 128 * 1024 * 1024);
+    if (oversizedFiles.length > 0) {
+      showToast.error('Files must be under 128MB');
+      return;
+    }
+    
+    setAttachments((prev) => [...prev, ...files]);
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async () => {
+    if (!newComment.trim() && attachments.length === 0) {
+      showToast.error('Please add a comment or attachment');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      await onAddComment(newComment.trim() || 'Shared media', attachments, null);
+      setNewComment("");
+      setAttachments([]);
+      showToast.success('Comment added successfully!');
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+      showToast.error('Failed to add comment');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReplyTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
+    if (text.length <= 280) {
+      setReplyText(text);
+    }
+  };
+
+  const handleReplySubmit = async () => {
+    if (!replyText.trim() || replyingTo === null) return;
+    try {
+      await onAddComment(replyText, [], replyingTo);
+      setReplyText("");
+      setReplyingTo(null);
+      setShowReplyModal(false);
+      showToast.success('Reply added successfully!');
+    } catch (error) {
+      console.error('Error submitting reply:', error);
+      showToast.error('Failed to add reply');
+    }
+  };
+
+  const handleReaction = async (commentId: number, reactionType: string) => {
+    try {
+      const response = await commentService.toggleCommentLike(commentId, reactionType);
+      setShowReactionPicker(null);
+      onRefreshComments();
+      showToast.success(response.data.liked ? 'Reaction added!' : 'Reaction removed!');
+    } catch (error) {
+      console.error('Error updating reaction:', error);
+      showToast.error('Failed to update reaction');
+    }
+  };
+
+  const handleShare = (commentId: number) => {
+    const link = commentService.generateShareableLink(commentId, taskId);
+    navigator.clipboard.writeText(link);
+    showToast.success('Comment link copied to clipboard!');
+  };
+
+  const toggleReplies = (commentId: number) => {
+    setExpandedReplies((prev) => 
+      prev.includes(commentId) 
+        ? prev.filter(id => id !== commentId) 
+        : [...prev, commentId]
+    );
+  };
+
+  const getUserLikedReaction = (comment: Comment) => {
+    if (!comment.likes || !currentUser) return null;
+    const userLike = comment.likes.find(like => like.userId === currentUser.id);
+    return userLike ? userLike.reactionType : null;
+  };
+
+  const renderReactionSummary = (comment: Comment) => {
+    if (!comment.reactionSummary || Object.keys(comment.reactionSummary).length === 0) {
+      return null;
+    }
+    const totalReactions = Object.values(comment.reactionSummary).reduce((sum, count) => sum + count, 0);
+    return (
+      <div className="flex items-center space-x-2 mt-2">
+        <div className="flex items-center space-x-1 bg-gray-200 rounded-full px-2 py-1">
+          {Object.entries(comment.reactionSummary).map(([type, count]) => {
+            const reaction = EMOJI_REACTIONS.find(r => r.type === type);
+            if (!reaction || count === 0) return null;
+            return <span key={type} className="text-xs">{reaction.emoji}</span>;
+          })}
+          <span className="text-xs text-gray-600 ml-1">{totalReactions}</span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAttachmentPreview = (attachment: File, index: number) => {
+    const isImage = attachment.type.startsWith('image/');
+    const isVideo = attachment.type.startsWith('video/');
+    const Icon = isImage ? FaImage : isVideo ? FaVideo : FaPaperclip;
+    
+    // Create object URL for preview
+    const previewUrl = isImage ? URL.createObjectURL(attachment) : null;
+    
+    return (
+      <div key={index} className="relative inline-block mr-2 mb-2">
+        {isImage && previewUrl ? (
+          <div className="relative">
+            <img 
+              src={previewUrl} 
+              alt={attachment.name}
+              className="h-20 w-20 object-cover rounded-lg"
+              onLoad={() => URL.revokeObjectURL(previewUrl)}
+            />
+            <button
+              onClick={() => removeAttachment(index)}
+              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+            >
+              <FaTimes className="text-xs" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center p-2 bg-gray-100 rounded-lg">
+            <Icon className="mr-2 text-gray-600" />
+            <div className="text-sm">
+              <p className="truncate max-w-xs">{attachment.name}</p>
+              <p className="text-xs text-gray-500">
+                {(attachment.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+            </div>
+            <button
+              onClick={() => removeAttachment(index)}
+              className="ml-2 text-red-500 hover:text-red-700"
+            >
+              <FaTimes />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+    const renderCommentAttachment = (attachment: any, idx: number) => {
+    if (attachment.type === 'image') {
+      return (
+        <div key={idx} className="mt-2">
+          <img 
+            src={attachment.url} 
+            alt={attachment.name || `attachment-${idx}`} 
+            className="rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+            style={{ maxWidth: '300px', maxHeight: '200px' }}
+            onClick={() => window.open(attachment.url, '_blank')}
+          />
+        </div>
+      );
+    } else if (attachment.type === 'youtube' || attachment.type === 'video') {
+      return (
+        <div key={idx} className="mt-2">
+          <BrandedVideoPlayer
+            url={attachment.videoUrl || attachment.url}
+            videoId={attachment.videoId}
+            thumbnail={attachment.thumbnail}
+            title={attachment.name || 'Video'}
+            isYouTube={attachment.type === 'youtube' || !!attachment.videoId}
+          />
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const renderComment = (comment: Comment, isReply: boolean = false) => {
+    const userReaction = getUserLikedReaction(comment);
+    const areRepliesExpanded = expandedReplies.includes(comment.id);
+
+    return (
+      <div key={comment.id} className={`relative ${isReply ? 'ml-8' : ''} mb-4`}>
+        <div 
+          className={`p-3 rounded-lg`}
+          style={{
+            backgroundColor: isReply ? '#f0f2f5' : '#f8f9fa',
+            borderRadius: '18px'
+          }}
+        >
+          <div className="flex items-start space-x-3">
+            <UserAvatar user={comment.user} size="sm" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline space-x-2">
+                <p className="text-sm font-semibold text-gray-800">
+                  {comment.user?.firstName} {comment.user?.lastName}
+                </p>
+                <span className="text-xs text-gray-500">
+                  {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              <p className="text-sm text-gray-700 mt-1 break-words text-left">
+                {comment.content}
+              </p>
+              {comment.attachments && comment.attachments.length > 0 && (
+                <div className="mt-2 space-y-2">
+                  {comment.attachments.map((attachment, idx) => renderCommentAttachment(attachment, idx))}
+                </div>
+              )}
+              {renderReactionSummary(comment)}
+              <div className="flex items-center space-x-3 mt-2 text-xs text-gray-500">
+                {comment.likeCount > 0 && <span>{comment.likeCount} likes</span>}
+                {comment.replies && comment.replies.length > 0 && <span>{comment.replies.length} replies</span>}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center space-x-4 text-xs" style={{ color: theme.colors.secondary }}>
+              <button 
+                onClick={() => setShowReactionPicker(showReactionPicker === comment.id ? null : comment.id)} 
+                className={`hover:opacity-80 ${userReaction ? 'font-bold' : ''}`}
+                style={{ color: userReaction ? theme.colors.primary : theme.colors.secondary }}
+              >
+                Like
+              </button>
+              <button 
+                onClick={() => { setReplyingTo(comment.id); setShowReplyModal(true); }} 
+                className="hover:opacity-80"
+              >
+                Reply
+              </button>
+              <button 
+                onClick={() => handleShare(comment.id)} 
+                className="hover:opacity-80"
+              >
+                Share
+              </button>
+            </div>
+          </div>
+          {showReactionPicker === comment.id && (
+            <div className="absolute z-10 bottom-full mb-2 bg-white border rounded-lg shadow-lg p-2 left-16">
+              <div className="flex space-x-1">
+                {EMOJI_REACTIONS.map((reaction) => (
+                  <button
+                    key={reaction.type}
+                    onClick={() => handleReaction(comment.id, reaction.type)}
+                    className={`p-1 hover:bg-gray-100 rounded text-lg ${
+                      userReaction === reaction.type ? 'bg-blue-100' : ''
+                    }`}
+                    title={reaction.type}
+                  >
+                    {reaction.emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {comment.replies && comment.replies.length > 0 && (
+          <div className="ml-8 mt-2">
+            {areRepliesExpanded ? (
+              <> 
+                {comment.replies.map(reply => renderComment(reply, true))}
+                <button 
+                  onClick={() => toggleReplies(comment.id)} 
+                  className="text-xs mt-2 hover:opacity-80"
+                  style={{ color: theme.colors.primary }}
+                >
+                  Hide replies
+                </button>
+              </>
+            ) : (
+              <>
+                {renderComment(comment.replies[0], true)}
+                {comment.replies.length > 1 && (
+                  <button 
+                    onClick={() => toggleReplies(comment.id)} 
+                    className="text-xs mt-2 hover:opacity-80"
+                    style={{ color: theme.colors.primary }}
+                  >
+                    View all {comment.replies.length} replies
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const imageCount = attachments.filter(f => f.type.startsWith('image/')).length;
+  const videoCount = attachments.filter(f => f.type.startsWith('video/')).length;
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg border p-6">
+      <h2 className="text-xl font-bold mb-6" style={{ color: theme.colors.secondary }}>
+        Comments ({comments.length})
+      </h2>
+      <div className="mb-6">
+        <div className="flex items-start space-x-4">
+          <UserAvatar user={currentUser} size="md" />
+          <div className="flex-1">
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Add a public comment..."
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 resize-none"
+              style={{ 
+                focusBorderColor: theme.colors.primary,
+                '--tw-ring-color': theme.colors.primary 
+              } as any}
+              rows={3}
+              disabled={isSubmitting}
+            />
+            
+            {/* Attachment Preview */}
+            {attachments.length > 0 && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex flex-wrap">
+                  {attachments.map((file, index) => renderAttachmentPreview(file, index))}
+                </div>
+                <p className="text-xs text-gray-600 mt-2">
+                  {imageCount > 0 && `${imageCount} image${imageCount !== 1 ? 's' : ''}`}
+                  {imageCount > 0 && videoCount > 0 && ', '}
+                  {videoCount > 0 && `${videoCount} video${videoCount !== 1 ? 's' : ''}`}
+                </p>
+              </div>
+            )}
+            
+            <div className="flex items-center justify-between mt-3">
+              <div className="flex items-center space-x-3">
+                {/* Image Upload */}
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  onClick={() => imageInputRef.current?.click()}
+                  className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
+                  disabled={imageCount >= 5 || isSubmitting}
+                  title={imageCount >= 5 ? 'Maximum 5 images allowed' : 'Attach images'}
+                >
+                  <FaImage className={`mr-1 ${imageCount >= 5 ? 'text-gray-400' : ''}`} />
+                  <span className="text-sm">Photo</span>
+                  {imageCount > 0 && <span className="text-xs ml-1">({imageCount}/5)</span>}
+                </button>
+                
+                {/* Video Upload */}
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  multiple
+                  accept="video/mp4,video/webm,video/ogg,video/mov"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  onClick={() => videoInputRef.current?.click()}
+                  className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
+                  disabled={videoCount >= 2 || isSubmitting}
+                  title={videoCount >= 2 ? 'Maximum 2 videos allowed' : 'Attach videos'}
+                >
+                  <FaVideo className={`mr-1 ${videoCount >= 2 ? 'text-gray-400' : ''}`} />
+                  <span className="text-sm">Video</span>
+                  {videoCount > 0 && <span className="text-xs ml-1">({videoCount}/2)</span>}
+                </button>
+                
+                {/* Emoji Picker */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
+                    disabled={isSubmitting}
+                  >
+                    <FaSmile className="mr-1" />
+                    <span className="text-sm">Emoji</span>
+                  </button>
+                  
+                  {showEmojiPicker && (
+                    <div className="absolute bottom-full mb-2 bg-white border rounded-lg shadow-lg p-3 z-10" style={{ width: '320px' }}>
+                      <div className="grid grid-cols-10 gap-1 max-h-48 overflow-y-auto">
+                        {EMOJI_SUGGESTIONS.map((emoji, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleEmojiClick(emoji)}
+                            className="text-lg hover:bg-gray-100 rounded p-1"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <button
+                onClick={handleSubmit}
+                disabled={(!newComment.trim() && attachments.length === 0) || isSubmitting}
+                className="px-5 py-2 text-sm text-white rounded-lg hover:opacity-90 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
+                style={{ 
+                  backgroundColor: (!newComment.trim() && attachments.length === 0) || isSubmitting ? undefined : theme.colors.primary 
+                }}
+              >
+                {isSubmitting ? 'Posting...' : 'Comment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-4">
+        {isCommentsLoading ? (
+          <div className="text-center py-8 text-gray-500">Loading comments...</div>
+        ) : commentsError ? (
+          <div className="text-center py-8 text-red-500">Error loading comments: {commentsError.message}</div>
+        ) : comments.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">No comments yet. Be the first to comment!</div>
+        ) : (
+          comments.map(comment => renderComment(comment))
+        )}
+      </div>
+
+      {showReplyModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white shadow-lg w-11/12 sm:w-1/2 md:w-1/3 p-5" style={{ borderRadius: '20px' }}>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: theme.colors.secondary }}>
+              Write a Reply
+            </h3>
+            <textarea
+              value={replyText}
+              onChange={handleReplyTextChange}
+              placeholder="Write a reply..."
+              className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 resize-none mb-3"
+              style={{ 
+                focusBorderColor: theme.colors.primary,
+                '--tw-ring-color': theme.colors.primary 
+              } as any}
+              rows={4}
+              maxLength={280}
+            />
+            <div className="text-right text-xs text-gray-500 mb-3">{replyText.length}/280</div>
+            <div className="flex justify-end space-x-2">
+              <button 
+                onClick={() => {
+                  setShowReplyModal(false);
+                  setReplyText("");
+                  setReplyingTo(null);
+                }} 
+                className="px-4 py-2 text-gray-700 rounded-lg hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleReplySubmit} 
+                disabled={!replyText.trim()} 
+                className="px-4 py-2 text-white rounded-lg hover:opacity-90 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                style={{ 
+                  backgroundColor: !replyText.trim() ? undefined : theme.colors.primary 
+                }}
+              >
+                Reply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default CommentsSection;

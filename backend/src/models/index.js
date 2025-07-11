@@ -1,5 +1,4 @@
-const { sequelize } = require('../config/database');
-const { Sequelize } = require('sequelize');
+const { sequelize, Sequelize } = require('../config/database');
 
 // Import models
 const User = require('./user.model');
@@ -20,6 +19,11 @@ const TaskAttachment = require('./taskAttachment.model');
 const BoardMember = require('./boardMember.model');
 const Label = require('./label.model');
 
+// Import new social models
+const CommentLike = require('./commentLike.model');
+const UserFollowing = require('./userFollowing.model');
+const TaskWatcher = require('./taskWatcher.model');
+
 // User associations
 User.hasMany(Session, { foreignKey: 'facilitatorId', as: 'createdSessions' });
 User.hasMany(Attendance, { foreignKey: 'userId', as: 'attendances' });
@@ -31,6 +35,22 @@ User.hasMany(Task, { foreignKey: 'createdBy', as: 'createdTasks' });
 User.hasMany(TaskComment, { foreignKey: 'userId', as: 'comments' });
 User.hasMany(TaskActivity, { foreignKey: 'userId', as: 'activities' });
 User.belongsToMany(Board, { through: BoardMember, foreignKey: 'userId', as: 'boards' });
+
+// User social associations
+User.hasMany(CommentLike, { foreignKey: 'userId', as: 'commentLikes' });
+User.hasMany(TaskWatcher, { foreignKey: 'userId', as: 'watchedTasks' });
+User.belongsToMany(User, { 
+  through: UserFollowing, 
+  foreignKey: 'followerId', 
+  otherKey: 'followedId', 
+  as: 'following' 
+});
+User.belongsToMany(User, { 
+  through: UserFollowing, 
+  foreignKey: 'followedId', 
+  otherKey: 'followerId', 
+  as: 'followers' 
+});
 
 // Department associations
 Department.hasMany(User, { foreignKey: 'departmentId', as: 'users' });
@@ -64,12 +84,14 @@ Task.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
 Task.hasMany(TaskComment, { foreignKey: 'taskId', as: 'comments' });
 Task.hasMany(TaskActivity, { foreignKey: 'taskId', as: 'activities' });
 Task.hasMany(TaskAttachment, { foreignKey: 'taskId', as: 'attachments' });
+Task.belongsToMany(User, { through: TaskWatcher, foreignKey: 'taskId', as: 'watchers' });
 
 // TaskComment associations
 TaskComment.belongsTo(Task, { foreignKey: 'taskId', as: 'task' });
 TaskComment.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 TaskComment.belongsTo(TaskComment, { foreignKey: 'parentId', as: 'parent' });
 TaskComment.hasMany(TaskComment, { foreignKey: 'parentId', as: 'replies' });
+TaskComment.hasMany(CommentLike, { foreignKey: 'commentId', as: 'likes' });
 
 // TaskActivity associations
 TaskActivity.belongsTo(Task, { foreignKey: 'taskId', as: 'task' });
@@ -87,6 +109,18 @@ BoardMember.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 // Label associations
 Label.belongsTo(Board, { foreignKey: 'boardId', as: 'board' });
 Label.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+
+// CommentLike associations
+CommentLike.belongsTo(TaskComment, { foreignKey: 'commentId', as: 'comment' });
+CommentLike.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+// UserFollowing associations
+UserFollowing.belongsTo(User, { foreignKey: 'followerId', as: 'follower' });
+UserFollowing.belongsTo(User, { foreignKey: 'followedId', as: 'followed' });
+
+// TaskWatcher associations
+TaskWatcher.belongsTo(Task, { foreignKey: 'taskId', as: 'task' });
+TaskWatcher.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // Session associations (existing)
 Session.hasMany(Attendance, { foreignKey: 'sessionId', as: 'attendances' });
@@ -126,5 +160,8 @@ module.exports = {
   TaskActivity,
   TaskAttachment,
   BoardMember,
-  Label
+  Label,
+  CommentLike,
+  UserFollowing,
+  TaskWatcher
 };

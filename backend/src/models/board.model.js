@@ -23,6 +23,7 @@ const Board = sequelize.define('Board', {
   projectId: {
     type: DataTypes.INTEGER,
     allowNull: true,
+    field: 'project_id',
     references: {
       model: 'Projects',
       key: 'id'
@@ -31,14 +32,16 @@ const Board = sequelize.define('Board', {
   departmentId: {
     type: DataTypes.INTEGER,
     allowNull: true,
+    field: 'department_id',
     references: {
       model: 'Departments',
       key: 'id'
     }
   },
   createdBy: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: false,
+    field: 'created_by',
     references: {
       model: 'Users',
       key: 'id'
@@ -46,6 +49,7 @@ const Board = sequelize.define('Board', {
   },
   backgroundColor: {
     type: DataTypes.STRING(7),
+    field: 'color',
     defaultValue: '#0079BF',
     validate: {
       is: /^#[0-9A-F]{6}$/i
@@ -53,18 +57,21 @@ const Board = sequelize.define('Board', {
   },
   backgroundImage: {
     type: DataTypes.STRING,
+    field: 'background_image',
     allowNull: true
   },
   visibility: {
     type: DataTypes.ENUM('private', 'department', 'organization', 'public'),
-    defaultValue: 'department'
+    defaultValue: 'private'
   },
   isStarred: {
     type: DataTypes.BOOLEAN,
+    field: 'is_starred',
     defaultValue: false
   },
   isArchived: {
     type: DataTypes.BOOLEAN,
+    field: 'is_archived',
     defaultValue: false
   },
   settings: {
@@ -80,18 +87,22 @@ const Board = sequelize.define('Board', {
 }, {
   tableName: 'Boards',
   timestamps: true,
+  underscored: true,
   indexes: [
     {
-      fields: ['projectId']
+      fields: ['project_id']
     },
     {
-      fields: ['departmentId']
+      fields: ['department_id']
     },
     {
-      fields: ['createdBy']
+      fields: ['created_by']
     },
     {
-      fields: ['isArchived']
+      fields: ['is_archived']
+    },
+    {
+      fields: ['is_starred']
     }
   ]
 });

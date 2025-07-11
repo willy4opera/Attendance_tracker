@@ -1,0 +1,49 @@
+export interface Notification {
+  id: number;
+  userId: number;
+  type: 'comment' | 'mention' | 'like' | 'task_assigned' | 'task_updated' | 'activity';
+  title: string;
+  message: string;
+  data: {
+    taskId?: number;
+    commentId?: number;
+    boardId?: number;
+    projectId?: number;
+    activityId?: number;
+    mentionedBy?: {
+      id: number;
+      firstName: string;
+      lastName: string;
+      profilePicture?: string;
+    };
+    task?: {
+      id: number;
+      title: string;
+    };
+    board?: {
+      id: number;
+      name: string;
+    };
+  };
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationPreferences {
+  email: boolean;
+  inApp: boolean;
+  push: boolean;
+  mentions: boolean;
+  comments: boolean;
+  likes: boolean;
+  taskAssignments: boolean;
+  taskUpdates: boolean;
+  activityUpdates: boolean;
+}
+
+export interface NotificationSettings {
+  id: number;
+  userId: number;
+  preferences: NotificationPreferences;
+}

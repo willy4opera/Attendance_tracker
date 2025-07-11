@@ -1,21 +1,5 @@
 import api from './api';
-
-export interface User {
-  id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phoneNumber?: string;
-  role: 'admin' | 'moderator' | 'user';
-  isActive: boolean;
-  isEmailVerified: boolean;
-  createdAt: string;
-  updatedAt: string;
-  lastLogin?: string;
-  attendanceRate?: number;
-  totalSessions?: number;
-  attendedSessions?: number;
-}
+import type { User } from '../types';
 
 export interface UserFilters {
   search?: string;
@@ -57,8 +41,15 @@ export interface CreateUserDto {
   role: 'admin' | 'moderator' | 'user';
 }
 
+export interface UsersResponse {
+  users: User[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
 class UserService {
-  async getAllUsers(filters: UserFilters = {}) {
+  async getAllUsers(filters: UserFilters = {}): Promise<UsersResponse> {
     const params = new URLSearchParams();
     
     if (filters.search) params.append('search', filters.search);
@@ -75,60 +66,56 @@ class UserService {
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
 
     const response = await api.get(`/users?${params.toString()}`);
-    return response.data;
+    return response.data.data;
   }
 
-  async getUserById(id: number) {
+  async getUserById(id: number): Promise<User> {
     const response = await api.get(`/users/${id}`);
-    return response.data;
+    return response.data.data.user;
   }
 
-  async getUserStats() {
+  async getUserStats(): Promise<UserStats> {
     const response = await api.get('/users/stats');
-    return response.data;
+    return response.data.data;
   }
 
-  async createUser(data: CreateUserDto) {
+  async createUser(data: CreateUserDto): Promise<User> {
     const response = await api.post('/users', data);
-    return response.data;
+    return response.data.data.user;
   }
 
-  async updateUser(id: number, data: UpdateUserDto) {
+  async updateUser(id: number, data: UpdateUserDto): Promise<User> {
     const response = await api.put(`/users/${id}`, data);
-    return response.data;
+    return response.data.data.user;
   }
 
-  async deleteUser(id: number) {
-    const response = await api.delete(`/users/${id}`);
-    return response.data;
+  async deleteUser(id: number): Promise<void> {
+    await api.delete(`/users/${id}`);
   }
 
-  async activateUser(id: number) {
+  async activateUser(id: number): Promise<User> {
     const response = await api.patch(`/users/${id}/activate`);
-    return response.data;
+    return response.data.data.user;
   }
 
-  async deactivateUser(id: number) {
+  async deactivateUser(id: number): Promise<User> {
     const response = await api.patch(`/users/${id}/deactivate`);
-    return response.data;
+    return response.data.data.user;
   }
 
-  async resetUserPassword(id: number) {
-    const response = await api.post(`/users/${id}/reset-password`);
-    return response.data;
+  async resetUserPassword(id: number): Promise<void> {
+    await api.post(`/users/${id}/reset-password`);
   }
 
-  async bulkDeleteUsers(userIds: number[]) {
-    const response = await api.post('/users/bulk-delete', { userIds });
-    return response.data;
+  async bulkDeleteUsers(userIds: number[]): Promise<void> {
+    await api.post('/users/bulk-delete', { userIds });
   }
 
-  async bulkUpdateUsers(userIds: number[], updates: Partial<UpdateUserDto>) {
-    const response = await api.post('/users/bulk-update', { userIds, updates });
-    return response.data;
+  async bulkUpdateUsers(userIds: number[], updates: Partial<UpdateUserDto>): Promise<void> {
+    await api.post('/users/bulk-update', { userIds, updates });
   }
 
-  async exportUsers(filters: UserFilters = {}) {
+  async exportUsers(filters: UserFilters = {}): Promise<void> {
     const params = new URLSearchParams();
     
     if (filters.search) params.append('search', filters.search);
@@ -153,4 +140,4 @@ class UserService {
   }
 }
 
-export const userService = new UserService();
+export default new UserService();
