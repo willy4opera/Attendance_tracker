@@ -71,26 +71,6 @@ jobs:
           ssh root@77.37.121.27 "
             cd '${{ env.DEPLOY_PATH }}'
             
-            # Create root .env file
-            echo 'NODE_ENV=production' > .env
-            echo 'PORT=5000' >> .env
-            echo 'FRONTEND_PORT=5173' >> .env
-            echo 'DB_HOST=host.docker.internal' >> .env
-            echo 'DB_PORT=5432' >> .env
-            echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
-            echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
-            echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
-            echo 'REDIS_PORT=6380' >> .env
-            echo 'VITE_API_URL=https://syncli.cloud/api/v1' >> .env
-            echo 'JWT_SECRET=${{ secrets.JWT_SECRET }}' >> .env
-            echo 'EMAIL_HOST=${{ secrets.EMAIL_HOST }}' >> .env
-            echo 'EMAIL_PORT=${{ secrets.EMAIL_PORT }}' >> .env
-            echo 'EMAIL_USER=${{ secrets.EMAIL_USER }}' >> .env
-            echo 'EMAIL_PASS=${{ secrets.EMAIL_PASS }}' >> .env
-            echo 'CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}' >> .env
-            echo 'CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}' >> .env
-            echo 'CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}' >> .env
-            
             # Create backend .env file
             echo 'NODE_ENV=production' > backend/.env
             echo 'PORT=5000' >> backend/.env
@@ -172,119 +152,69 @@ jobs:
             echo 'VITE_LINKEDIN_REDIRECT_URI=https://syncli.cloud/register' >> frontend/.env
             
             # Set permissions
-            chmod 600 .env backend/.env frontend/.env
+            chmod 600 backend/.env frontend/.env
             echo '✅ Environment files created successfully'
-            ls -la .env backend/.env frontend/.env
+            ls -la backend/.env frontend/.env
           "
 
-      - name: Check and Start Redis Service
+      - name: Start Redis Service
         run: |
-          echo "🔍 Checking Redis service status..."
+          echo "🔍 Starting Redis service..."
           ssh root@77.37.121.27 "
             cd '${{ env.DEPLOY_PATH }}' &&
-            
-            # Check if Redis is already running on port 6380
             if netstat -tlpn | grep ':6380' > /dev/null; then
               echo '✅ Redis is already running on port 6380'
-              docker-compose -f docker-compose.prod.yml ps redis
             else
               echo '🚀 Starting Redis service...'
               docker-compose -f docker-compose.prod.yml up -d redis
               sleep 5
-              echo '✅ Redis service started'
-            fi
-          "
-
-      - name: Zero-Downtime Backend Deployment
-        run: |
-          echo "🚀 Performing zero-downtime backend deployment..."
-          ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' && 
-            
-            # Build new backend image first
-            echo '📦 Building new backend image...' &&
-            docker-compose -f docker-compose.prod.yml build backend &&
-            
-            # Check if backend is currently running
-            if docker-compose -f docker-compose.prod.yml ps backend | grep -q 'Up'; then
-              echo '🔄 Backend is running, performing rolling update...'
-              
-              # Create new container without starting
-              docker-compose -f docker-compose.prod.yml create backend &&
-              
-              # Get old container name
-              OLD_CONTAINER=\$(docker-compose -f docker-compose.prod.yml ps -q backend) &&
-              
-              # Stop old container and start new one
-              docker-compose -f docker-compose.prod.yml stop backend &&
-              docker-compose -f docker-compose.prod.yml up -d backend &&
-              
-              # Wait for new container to be healthy
-              sleep 10 &&
-              
-              # Remove old container
-              docker rm \$OLD_CONTAINER 2>/dev/null || true &&
-              
-              echo '✅ Backend rolling update completed'
-            else
-              echo '🚀 No backend running, starting fresh...'
-              docker-compose -f docker-compose.prod.yml up -d backend
-            fi
-          "
-
-      - name: Zero-Downtime Frontend Deployment
-        run: |
-          echo "🎨 Performing zero-downtime frontend deployment..."
-          ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' && 
-            
-            # Build new frontend image
-            echo '📦 Building new frontend image...' &&
-            docker-compose -f docker-compose.prod.yml build frontend &&
-            
-            # Deploy frontend with zero downtime
-            if docker-compose -f docker-compose.prod.yml ps frontend | grep -q 'Up'; then
-              echo '🔄 Frontend is running, performing rolling update...'
-              docker-compose -f docker-compose.prod.yml stop frontend &&
-              docker-compose -f docker-compose.prod.yml up -d frontend
-            else
-              echo '🚀 No frontend running, starting fresh...'
-              docker-compose -f docker-compose.prod.yml up -d frontend
             fi &&
-            
-            echo '✅ Frontend deployment completed'
+            docker-compose -f docker-compose.prod.yml ps redis
           "
 
-      - name: Health Check
+      - name: Deploy Backend Service
         run: |
-          echo "🔍 Running comprehensive health checks..."
+          echo "🚀 Deploying backend service on port 5000..."
           ssh root@77.37.121.27 "
             cd '${{ env.DEPLOY_PATH }}' && 
-            echo '=== Docker Services Status ===' && 
+            echo '📦 Building backend...' &&
+            docker-compose -f docker-compose.prod.yml build backend &&
+            echo '🔄 Starting backend service...' &&
+            docker-compose -f docker-compose.prod.yml up -d backend &&
+            echo '✅ Backend service deployed'
+          "
+
+      - name: Deploy Frontend Service
+        run: |
+          echo "🎨 Deploying frontend service on port 5173..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' && 
+            echo '📦 Building frontend...' &&
+            docker-compose -f docker-compose.prod.yml build frontend &&
+            echo '🔄 Starting frontend service...' &&
+            docker-compose -f docker-compose.prod.yml up -d frontend &&
+            echo '✅ Frontend service deployed'
+          "
+
+      - name: Service Health Check
+        run: |
+          echo "🔍 Checking service health..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' && 
+            echo '=== Service Status ===' && 
             docker-compose -f docker-compose.prod.yml ps && 
             echo '' &&
-            
-            # Wait for services to be ready
-            echo '⏳ Waiting for services to initialize...' &&
-            sleep 30 && 
-            
+            sleep 20 && 
             echo '=== Port Status ===' &&
-            echo 'Redis (6380):' && netstat -tlpn | grep :6380 || echo 'Not bound' &&
-            echo 'Backend (5000):' && netstat -tlpn | grep :5000 || echo 'Not bound' &&
-            echo 'Frontend (5173):' && netstat -tlpn | grep :5173 || echo 'Not bound' &&
+            echo 'Backend (5000):' && netstat -tlpn | grep :5000 || echo 'Backend not bound' &&
+            echo 'Frontend (5173):' && netstat -tlpn | grep :5173 || echo 'Frontend not bound' &&
+            echo 'Redis (6380):' && netstat -tlpn | grep :6380 || echo 'Redis not bound' &&
             echo '' &&
-            
-            echo '=== Backend Health Check ===' && 
-            curl -f http://localhost:5000/health || curl -f http://localhost:5000/api/health || curl -f http://localhost:5000/ || echo '⚠️ Backend health check failed' && 
-            echo '' &&
-            
-            echo '=== Frontend Health Check ===' && 
-            curl -f http://localhost:5173/ || echo '⚠️ Frontend health check failed' && 
-            echo '' &&
-            
-            echo '=== External Health Check ===' &&
-            curl -I https://syncli.cloud/ || echo '⚠️ External health check failed' &&
-            
+            echo '=== Direct Service Tests ===' &&
+            echo 'Testing Backend (localhost:5000):' &&
+            curl -f http://localhost:5000/health 2>/dev/null && echo '  Backend Health: ✅' || curl -f http://localhost:5000/ 2>/dev/null && echo '  Backend Root: ✅' || echo '  Backend: ❌' &&
+            echo 'Testing Frontend (localhost:5173):' &&
+            curl -f http://localhost:5173/ 2>/dev/null && echo '  Frontend: ✅' || echo '  Frontend: ❌' &&
             echo '✅ Health checks completed'
           "
 
@@ -292,16 +222,15 @@ jobs:
         if: always()
         run: |
           echo "📊 Deployment completed at $(date)"
-          echo "🌐 Application URL: https://syncli.cloud/"
-          echo "🔧 Backend API: https://syncli.cloud/api/"
-          echo "📱 Frontend: https://syncli.cloud/"
           echo ""
-          echo "🏗️ Infrastructure:"
-          echo "  - PostgreSQL: System service (port 5432)"
+          echo "🏗️ Architecture:"
+          echo "  - System Nginx: Reverse proxy (ports 80/443) → /etc/nginx/conf.d/syncli.cloud.conf"
+          echo "  - Backend: Docker container (port 5000)"
+          echo "  - Frontend: Docker container (port 5173)" 
           echo "  - Redis: Docker container (port 6380)"
-          echo "  - Backend: Docker container (port 5000) - Single instance"
-          echo "  - Frontend: Docker container (port 5173)"
-          echo "  - Nginx: System reverse proxy (ports 80/443)"
+          echo "  - PostgreSQL: System service (port 5432)"
+          echo ""
+          echo "🌐 Traffic Flow: syncli.cloud → System Nginx → Backend(5000) & Frontend(5173)"
           echo ""
           if [ "${{ job.status }}" = "success" ]; then
             echo "✅ Deployment successful!"
