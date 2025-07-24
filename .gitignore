@@ -10,13 +10,29 @@ build/
 out/
 .next/
 
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Environment variables - CRITICAL SECURITY
+.env*
+!.env.example
+!.env*.template
 config/*.local.json
+*.env
+backend/.env*
+frontend/.env*
+!backend/.env.example
+!frontend/.env.example
+
+# Backup folders and files - IMPORTANT
+backups/
+backup/
+*backup*
+*.backup
+*.bak
+*.old
+.backup*/
+
+# History tracking tools
+.lh/
+.lhignore
 
 # Logs
 logs/
@@ -55,14 +71,18 @@ temp/
 *.tmp
 *.temp
 
-# Uploads
+# Uploads and user content
 uploads/*
 !uploads/.gitkeep
+attachments/
+files/
 
-# Database
+# Database files
 *.sqlite
 *.sqlite3
 *.db
+*.sql
+!migrations/*.sql
 
 # Cache
 .cache/
@@ -70,9 +90,12 @@ uploads/*
 .eslintcache
 .stylelintcache
 
-# Documentation
+# Documentation (except main README)
 docs/_build/
 docs/.vuepress/dist/
+*.md
+!README.md
+!docs/README.md
 
 # Misc
 .sass-cache/
@@ -81,15 +104,17 @@ docs/.vuepress/dist/
 .node_repl_history
 .yarn-integrity
 
-# Security
+# Security - CRITICAL
 *.pem
 *.key
 *.crt
 *.p12
-
-# Backup files
-*.backup
-*.bak
+auth_token.txt
+admin_token.txt
+tokens/
+*.token
+secrets/
+.secrets/
 
 # Archives
 *.zip
@@ -97,7 +122,7 @@ docs/.vuepress/dist/
 *.rar
 *.7z
 
-# Python (if using any Python scripts)
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -109,30 +134,50 @@ ENV/
 # Redis
 dump.rdb
 
-# PostgreSQL
-*.sql
-!migrations/*.sql
-
-# Custom
-TODO.md
-NOTES.md
-.secrets/
-
-# Markdown files (except README.md)
-*.md
-!README.md
-
-# Test directories
+# Test files and directories
 backend/Test/
 backend/tests/
+test-*.js
+test-*.png
+test-*.jpg
+debug-*.js
+check-*.js
+verify-*.js
+fix-*.js
+generate-*.js
+assign-*.js
+update-*.js
+rendered-*.html
 
-# Documentation files (except main README)
-docs/*.md
-!docs/README.md
+# Development tools
+backend/migrations/backup/
+backend/config/tokens/
+backend/config/youtube-tokens.json
 
-# Ignore all markdown files except README.md
-*.md
-!README.md
+# Custom ignores
+TODO.md
+NOTES.md
+cookies.txt
 
-# Backend Test directory (local tests)
-backend/Test/
+# Image files in root
+*.png
+*.jpg
+*.jpeg
+*.gif
+!public/**/*
+!src/**/*
+!assets/**/*
+
+# JavaScript test and debug files
+backend/test-*
+backend/check-*
+backend/debug-*
+backend/verify-*
+backend/fix-*
+backend/generate-*
+backend/assign-*
+backend/update-*
+
+# Template outputs
+*.hbs.output
+*.mjml.output

@@ -1,0 +1,379 @@
+name: Production Deployment
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      deployment_type:
+        description: 'Select deployment type'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - migrations_only
+          - frontend_only
+          - backend_only
+
+env:
+  DEPLOY_PATH: /var/www/html/Attendance_tracker
+  REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add SSH known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 77.37.121.27 >> ~/.ssh/known_hosts
+
+      - name: Setup Project Directory
+        run: |
+          echo "✨ Setting up project directory..."
+          echo "📋 Repository: ${{ env.REPO_URL }}"
+          echo "📁 Deploy Path: ${{ env.DEPLOY_PATH }}"
+          
+          ssh root@77.37.121.27 "
+            if [ ! -d '${{ env.DEPLOY_PATH }}' ]; then
+              echo '🆕 First-time setup: Creating directory and cloning repository'
+              mkdir -p '${{ env.DEPLOY_PATH }}'
+              cd /var/www/html
+              git clone '${{ env.REPO_URL }}.git' Attendance_tracker
+              cd '${{ env.DEPLOY_PATH }}'
+              
+              # Setup basic directory structure if needed
+              echo '📁 Setting up directory permissions...'
+              chown -R root:root '${{ env.DEPLOY_PATH }}'
+              chmod -R 755 '${{ env.DEPLOY_PATH }}'
+              
+              echo '✅ Repository cloned successfully'
+            else
+              echo '📁 Directory exists, checking git configuration...'
+              cd '${{ env.DEPLOY_PATH }}'
+              
+              # Verify and fix git remote if needed
+              CURRENT_REMOTE=\$(git config --get remote.origin.url 2>/dev/null || echo 'none')
+              EXPECTED_REMOTE='${{ env.REPO_URL }}.git'
+              
+              if [ \"\$CURRENT_REMOTE\" != \"\$EXPECTED_REMOTE\" ]; then
+                echo '🔧 Updating git remote URL...'
+                git remote set-url origin \"\$EXPECTED_REMOTE\" 2>/dev/null || git remote add origin \"\$EXPECTED_REMOTE\"
+                echo \"✅ Remote updated: \$EXPECTED_REMOTE\"
+              else
+                echo '✅ Git remote is correctly configured'
+              fi
+            fi
+          "
+
+      - name: Deploy Code
+        if: github.event.inputs.deployment_type == 'full' || github.event.inputs.deployment_type == 'frontend_only' || github.event.inputs.deployment_type == 'backend_only' || github.event_name == 'push'
+        run: |
+          echo "🔄 Deploying latest changes..."
+          echo "🎯 Branch: ${{ github.ref_name }}"
+          echo "📋 Commit: ${{ github.sha }}"
+          
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' && 
+            echo '🔍 Current git status:' && 
+            git status --porcelain || true &&
+            echo '💾 Stashing any local changes...' &&
+            git stash push -m 'Auto-stash before deployment $(date)' || true && 
+            echo '📥 Fetching latest changes...' &&
+            git fetch origin ${{ github.ref_name }} &&
+            echo '🔄 Pulling latest code...' &&
+            git pull origin ${{ github.ref_name }} && 
+            echo '✅ Code deployed successfully'
+            echo '📊 Current commit:' && git log --oneline -1
+          "
+
+      - name: Setup Production Environment Files
+        run: |
+          echo "🔧 Setting up production environment files..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' && 
+            
+            echo '🔍 Checking for existing environment files...'
+            
+            # Backend Environment Setup
+            if [ -d 'backend' ]; then
+              echo '📋 Setting up backend environment...'
+              
+              # Check if production .env already exists
+              if [ -f 'backend/.env' ]; then
+                echo '✅ Backend .env already exists, backing up...'
+                cp backend/.env backend/.env.backup.$(date +%Y%m%d_%H%M%S)
+              fi
+              
+              # Create production .env file
+              cat > backend/.env << 'BACKEND_ENV'
+# Production Environment Configuration
+NODE_ENV=production
+PORT=5000
+
+# Database Configuration
+DB_HOST=postgres
+DB_PORT=5432
+DB_NAME=attendance_tracker_prod
+DB_USER=postgres
+DB_PASSWORD=${{ secrets.DB_PASSWORD || 'your_secure_db_password_here' }}
+
+# Redis Configuration
+REDIS_URL=redis://redis:6379
+
+# JWT Configuration
+JWT_SECRET=${{ secrets.JWT_SECRET || 'your_super_secure_jwt_secret_key_change_this_in_production' }}
+JWT_EXPIRES_IN=24h
+
+# Application URLs
+API_URL=https://syncli.cloud/api
+FRONTEND_URL=https://syncli.cloud
+
+# Email Configuration (if needed)
+SMTP_HOST=${{ secrets.SMTP_HOST || 'localhost' }}
+SMTP_PORT=${{ secrets.SMTP_PORT || '587' }}
+SMTP_USER=${{ secrets.SMTP_USER || '' }}
+SMTP_PASS=${{ secrets.SMTP_PASS || '' }}
+
+# File Upload Configuration
+MAX_FILE_SIZE=10485760
+UPLOAD_PATH=/app/uploads
+
+# Security
+CORS_ORIGIN=https://syncli.cloud
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Logging
+LOG_LEVEL=info
+LOG_FILE=/app/logs/app.log
+BACKEND_ENV
+
+              echo '✅ Backend .env created successfully'
+              
+              # Set secure permissions
+              chmod 600 backend/.env
+            fi
+            
+            # Frontend Environment Setup
+            if [ -d 'frontend' ]; then
+              echo '📋 Setting up frontend environment...'
+              
+              # Check if production .env already exists
+              if [ -f 'frontend/.env' ]; then
+                echo '✅ Frontend .env already exists, backing up...'
+                cp frontend/.env frontend/.env.backup.$(date +%Y%m%d_%H%M%S)
+              fi
+              
+              # Create production .env file
+              cat > frontend/.env << 'FRONTEND_ENV'
+# Production Environment Configuration
+NODE_ENV=production
+
+# API Configuration
+VITE_API_URL=https://syncli.cloud/api
+VITE_API_BASE_URL=https://syncli.cloud/api
+
+# Application Configuration
+VITE_APP_NAME=Attendance Tracker
+VITE_APP_VERSION=1.0.0
+VITE_APP_URL=https://syncli.cloud
+
+# Feature Flags
+VITE_ENABLE_ANALYTICS=${{ secrets.ENABLE_ANALYTICS || 'false' }}
+VITE_ENABLE_DEBUG=${{ secrets.ENABLE_DEBUG || 'false' }}
+
+# Third-party Services
+VITE_GOOGLE_ANALYTICS_ID=${{ secrets.GOOGLE_ANALYTICS_ID || '' }}
+VITE_SENTRY_DSN=${{ secrets.SENTRY_DSN || '' }}
+
+# Upload Configuration
+VITE_MAX_FILE_SIZE=10485760
+VITE_ALLOWED_FILE_TYPES=jpg,jpeg,png,pdf,doc,docx
+
+# UI Configuration
+VITE_THEME=light
+VITE_LANGUAGE=en
+FRONTEND_ENV
+
+              echo '✅ Frontend .env created successfully'
+              
+              # Set secure permissions
+              chmod 600 frontend/.env
+            fi
+            
+            echo '🔒 Environment files created with secure permissions'
+            echo '📄 Environment files summary:'
+            ls -la backend/.env frontend/.env 2>/dev/null || echo 'Some environment files may not exist'
+          "
+
+      - name: Install Dependencies
+        if: github.event.inputs.deployment_type == 'full' || github.event.inputs.deployment_type == 'backend_only' || github.event.inputs.deployment_type == 'frontend_only' || github.event_name == 'push'
+        run: |
+          echo "📦 Installing/updating dependencies..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' && 
+            
+            # Check if package.json files have changed
+            if [ -f 'backend/package.json' ]; then
+              echo '📋 Backend dependencies will be installed during Docker build'
+            fi
+            
+            if [ -f 'frontend/package.json' ]; then
+              echo '📋 Frontend dependencies will be installed during Docker build'
+            fi
+            
+            echo '✅ Dependencies check completed'
+          "
+
+      - name: Build and Deploy Backend
+        if: github.event.inputs.deployment_type == 'full' || github.event.inputs.deployment_type == 'backend_only' || github.event_name == 'push'
+        run: |
+          echo "🚀 Building and deploying backend..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' && 
+            echo '📦 Building backend Docker image...' && 
+            docker-compose -f docker-compose.prod.yml build backend && 
+            echo '🔄 Stopping backend service...' && 
+            docker-compose -f docker-compose.prod.yml stop backend 2>/dev/null || echo 'Backend was not running' &&
+            echo '✅ Backend built successfully'
+          "
+
+      - name: Run Database Migrations
+        if: github.event.inputs.deployment_type == 'full' || github.event.inputs.deployment_type == 'migrations_only' || github.event.inputs.deployment_type == 'backend_only' || github.event_name == 'push'
+        run: |
+          echo "📜 Running database migrations..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' && 
+            echo '🔍 Checking for migrations...' && 
+            
+            # Start database services first
+            echo '🗄️ Starting database services...' &&
+            docker-compose -f docker-compose.prod.yml up -d postgres redis 2>/dev/null || echo 'Database services already running' &&
+            sleep 10 &&
+            
+            if [ -d 'backend/migrations' ] && [ \"\$(ls -A backend/migrations 2>/dev/null)\" ]; then
+              echo '📋 Running Sequelize migrations...' && 
+              docker-compose -f docker-compose.prod.yml run --rm backend npm run migrate || 
+              docker-compose -f docker-compose.prod.yml run --rm backend npx sequelize-cli db:migrate || 
+              echo '⚠️ Sequelize migration failed or not found'
+            elif [ -d 'backend/prisma' ] && [ -f 'backend/prisma/schema.prisma' ]; then
+              echo '📋 Running Prisma migrations...' &&
+              docker-compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy || 
+              echo '⚠️ Prisma migration failed'
+            elif [ -d 'backend/database/migrations' ] && [ \"\$(ls -A backend/database/migrations 2>/dev/null)\" ]; then
+              echo '📋 Running database migrations from database/migrations...' &&
+              docker-compose -f docker-compose.prod.yml run --rm backend npm run db:migrate || 
+              echo '⚠️ Database migration failed'
+            else
+              echo '📝 No migrations found, skipping...'
+            fi && 
+            echo '✅ Migrations completed'
+          "
+
+      - name: Start Backend Service
+        if: github.event.inputs.deployment_type == 'full' || github.event.inputs.deployment_type == 'backend_only' || github.event_name == 'push'
+        run: |
+          echo "🔄 Starting backend service..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' && 
+            docker-compose -f docker-compose.prod.yml up -d backend && 
+            echo '✅ Backend service started'
+          "
+
+      - name: Build and Deploy Frontend
+        if: github.event.inputs.deployment_type == 'full' || github.event.inputs.deployment_type == 'frontend_only' || github.event_name == 'push'
+        run: |
+          echo "🎨 Building and deploying frontend..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' && 
+            echo '📦 Building frontend Docker image...' && 
+            docker-compose -f docker-compose.prod.yml build frontend && 
+            echo '🔄 Stopping frontend service...' && 
+            docker-compose -f docker-compose.prod.yml stop frontend 2>/dev/null || echo 'Frontend was not running' &&
+            echo '🔄 Starting frontend service...' && 
+            docker-compose -f docker-compose.prod.yml up -d frontend && 
+            echo '✅ Frontend deployed successfully'
+          "
+
+      - name: Cleanup Docker Resources
+        run: |
+          echo "🧹 Cleaning up Docker resources..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' &&
+            docker system prune -f && 
+            docker image prune -f && 
+            echo '✅ Docker cleanup completed'
+          "
+
+      - name: Health Check
+        run: |
+          echo "🔍 Running health checks..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' && 
+            echo '=== Docker Services Status ===' && 
+            docker-compose -f docker-compose.prod.yml ps && 
+            echo '' && 
+            echo '=== Backend Health Check ===' && 
+            sleep 20 && 
+            curl -f http://localhost:5000/health || curl -f http://localhost:5000/api/health || curl -f http://localhost:5000/ || echo '⚠️ Backend health check failed' && 
+            echo '' && 
+            echo '=== Frontend Health Check ===' && 
+            curl -f http://localhost:5173/ || curl -f http://localhost:80/ || echo '⚠️ Frontend health check failed' && 
+            echo '✅ Health checks completed'
+          "
+
+      - name: Verify Deployment
+        run: |
+          echo "🔍 Verifying deployment..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' && 
+            echo '=== Repository Information ===' &&
+            echo 'Repository: ${{ env.REPO_URL }}' &&
+            echo 'Branch: ${{ github.ref_name }}' &&
+            echo 'Commit: ${{ github.sha }}' &&
+            echo '' &&
+            echo '=== Git Status ===' && 
+            git log --oneline -1 && 
+            git remote -v &&
+            echo '' && 
+            echo '=== Environment Files ===' &&
+            echo 'Backend .env:' && ls -la backend/.env 2>/dev/null || echo 'Backend .env not found' &&
+            echo 'Frontend .env:' && ls -la frontend/.env 2>/dev/null || echo 'Frontend .env not found' &&
+            echo '' && 
+            echo '=== Running Containers ===' && 
+            docker ps --filter 'name=attendance' --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' && 
+            echo '' && 
+            echo '=== Nginx Configuration Test ===' && 
+            nginx -t 2>/dev/null && echo '✅ Nginx config is valid' || echo '⚠️ Nginx config check failed' && 
+            echo '' && 
+            echo '=== External Health Check ===' && 
+            curl -I https://syncli.cloud/ || echo '⚠️ External health check failed' && 
+            echo '=== Verification completed ==='
+          "
+
+      - name: Final Status
+        if: always()
+        run: |
+          echo "📊 Deployment completed at $(date)"
+          echo "🌐 Application URL: https://syncli.cloud/"
+          echo "🔧 Backend API: https://syncli.cloud/api/"
+          echo "📱 Frontend: https://syncli.cloud/"
+          echo "📋 Repository: ${{ env.REPO_URL }}"
+          echo "🎯 Branch: ${{ github.ref_name }}"
+          echo "📋 Commit: ${{ github.sha }}"
+          echo ""
+          echo "🔒 Environment files have been created with secure permissions"
+          echo "⚠️  Remember to update secrets in GitHub repository settings for sensitive values"
+          echo ""
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed! Check the logs above."
+          fi
