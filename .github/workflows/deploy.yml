@@ -65,17 +65,6 @@ jobs:
             echo '✅ Code deployed successfully'
           "
 
-      - name: Fix Docker Compose Configuration
-        run: |
-          echo "🔧 Fixing Docker Compose configuration conflicts..."
-          ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' &&
-            # Remove container_name when using replicas to avoid conflicts
-            sed -i '/container_name: attendance_backend_prod/d' docker-compose.prod.yml &&
-            sed -i '/container_name: attendance_frontend_prod/d' docker-compose.prod.yml &&
-            echo '✅ Docker Compose configuration fixed'
-          "
-
       - name: Create Environment Files
         run: |
           echo "🔧 Creating environment files..."
@@ -86,7 +75,7 @@ jobs:
             echo 'NODE_ENV=production' > .env
             echo 'PORT=5000' >> .env
             echo 'FRONTEND_PORT=80' >> .env
-            echo 'DB_HOST=postgres' >> .env
+            echo 'DB_HOST=host.docker.internal' >> .env
             echo 'DB_PORT=5432' >> .env
             echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
@@ -105,14 +94,14 @@ jobs:
             # Create backend .env file
             echo 'NODE_ENV=production' > backend/.env
             echo 'PORT=5000' >> backend/.env
-            echo 'DB_HOST=postgres' >> backend/.env
+            echo 'DB_HOST=host.docker.internal' >> backend/.env
             echo 'DB_PORT=5432' >> backend/.env
             echo 'DB_NAME=${{ secrets.DB_NAME }}' >> backend/.env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> backend/.env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> backend/.env
             echo 'DB_DIALECT=postgres' >> backend/.env
             echo 'REDIS_HOST=redis' >> backend/.env
-            echo 'REDIS_PORT=6380' >> backend/.env
+            echo 'REDIS_PORT=6379' >> backend/.env
             echo 'REDIS_URL=redis://redis:6379' >> backend/.env
             echo 'JWT_SECRET=${{ secrets.JWT_SECRET }}' >> backend/.env
             echo 'JWT_EXPIRES_IN=24h' >> backend/.env
@@ -188,6 +177,24 @@ jobs:
             ls -la .env backend/.env frontend/.env
           "
 
+      - name: Check and Start Redis Service
+        run: |
+          echo "🔍 Checking Redis service status..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' &&
+            
+            # Check if Redis is already running on port 6380
+            if netstat -tlpn | grep ':6380' > /dev/null; then
+              echo '✅ Redis is already running on port 6380'
+              docker-compose -f docker-compose.prod.yml ps redis
+            else
+              echo '🚀 Starting Redis service...'
+              docker-compose -f docker-compose.prod.yml up -d redis
+              sleep 5
+              echo '✅ Redis service started'
+            fi
+          "
+
       - name: Validate Docker Compose Configuration
         run: |
           echo "🔍 Validating Docker Compose configuration..."
@@ -200,14 +207,21 @@ jobs:
 
       - name: Build and Start Services
         run: |
-          echo "🚀 Building and starting services..."
+          echo "🚀 Building and starting application services..."
           ssh root@77.37.121.27 "
             cd '${{ env.DEPLOY_PATH }}' && 
-            docker-compose -f docker-compose.prod.yml down || true &&
-            docker-compose -f docker-compose.prod.yml up -d postgres redis &&
-            sleep 10 &&
+            
+            # Stop any existing backend/frontend containers
+            docker-compose -f docker-compose.prod.yml stop backend frontend 2>/dev/null || true &&
+            
+            # Build the services
+            echo '📦 Building backend and frontend...' &&
             docker-compose -f docker-compose.prod.yml build backend frontend &&
+            
+            # Start the services
+            echo '🚀 Starting backend and frontend services...' &&
             docker-compose -f docker-compose.prod.yml up -d backend frontend &&
+            
             echo '✅ Services started successfully'
           "
 
@@ -218,11 +232,25 @@ jobs:
             cd '${{ env.DEPLOY_PATH }}' && 
             echo '=== Docker Services Status ===' && 
             docker-compose -f docker-compose.prod.yml ps && 
-            sleep 20 && 
+            echo '' &&
+            
+            # Wait for services to be ready
+            echo '⏳ Waiting for services to start...' &&
+            sleep 30 && 
+            
             echo '=== Backend Health Check ===' && 
-            curl -f http://localhost:5000/health || curl -f http://localhost:5000/ || echo '⚠️ Backend health check failed' && 
+            curl -f http://localhost:5000/health || curl -f http://localhost:5000/api/health || curl -f http://localhost:5000/ || echo '⚠️ Backend health check failed' && 
+            echo '' &&
+            
             echo '=== Frontend Health Check ===' && 
             curl -f http://localhost:80/ || echo '⚠️ Frontend health check failed' && 
+            echo '' &&
+            
+            echo '=== Port Status ===' &&
+            echo 'Redis (6380):' && netstat -tlpn | grep :6380 || echo 'Not bound' &&
+            echo 'Backend (5000):' && netstat -tlpn | grep :5000 || echo 'Not bound' &&
+            echo 'Frontend (80):' && netstat -tlpn | grep :80 || echo 'Not bound' &&
+            
             echo '✅ Health checks completed'
           "
 
@@ -233,6 +261,13 @@ jobs:
           echo "🌐 Application URL: https://syncli.cloud/"
           echo "🔧 Backend API: https://syncli.cloud/api/"
           echo "📱 Frontend: https://syncli.cloud/"
+          echo ""
+          echo "🏗️ Infrastructure:"
+          echo "  - PostgreSQL: System service (port 5432)"
+          echo "  - Redis: Docker container (port 6380)"
+          echo "  - Backend: Docker container (port 5000)"
+          echo "  - Frontend: Docker container (port 80)"
+          echo ""
           if [ "${{ job.status }}" = "success" ]; then
             echo "✅ Deployment successful!"
           else

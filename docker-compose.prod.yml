@@ -1,51 +1,60 @@
 version: '3.8'
 
 services:
-  postgres:
-    extends:
-      file: docker-compose.yml
-      service: postgres
-    environment:
-      POSTGRES_DB: attendance_tracker_prod
-    volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
-      - ./backups:/backups
-    networks:
-      - app-network
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-
+  # Use external Redis (port 6380) instead of system Redis (port 6379)
   redis:
-    extends:
-      file: docker-compose.yml
-      service: redis
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
     volumes:
       - redis_prod_data:/data
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     deploy:
       resources:
         limits:
           cpus: '1'
           memory: 512M
 
+  # Backend connects to host PostgreSQL (system PostgreSQL on localhost:5432)
   backend:
-    extends:
-      file: docker-compose.yml
-      service: backend
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
     environment:
       NODE_ENV: production
+      PORT: 5000
+      DB_HOST: host.docker.internal
+      DB_PORT: 5432
       DB_NAME: attendance_tracker_prod
+      DB_USER: Hhacker
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 24h
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASS: ${EMAIL_PASS}
     ports:
       - "5000:5000"
+    depends_on:
+      redis:
+        condition: service_healthy
     networks:
       - app-network
+    volumes:
+      - ./backend/uploads:/app/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
     deploy:
       replicas: 2
       resources:
@@ -61,30 +70,25 @@ services:
         max_attempts: 3
 
   frontend:
-    extends:
-      file: docker-compose.yml
-      service: frontend
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: https://syncli.cloud/api/v1
     ports:
       - "80:80"
+    depends_on:
+      - backend
     networks:
       - app-network
+    restart: unless-stopped
     deploy:
       resources:
         limits:
           cpus: '1'
           memory: 512M
 
-  # Production nginx load balancer
-  nginx-lb:
-    extends:
-      file: docker-compose.yml
-      service: nginx-lb
-    networks:
-      - app-network
-    profiles: [] # Remove profile restriction for production
-
 volumes:
-  postgres_prod_data:
   redis_prod_data:
 
 networks:
