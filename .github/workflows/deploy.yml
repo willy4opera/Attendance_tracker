@@ -37,311 +37,157 @@ jobs:
       - name: Setup Project Directory
         run: |
           echo "✨ Setting up project directory..."
-          echo "📋 Repository: ${{ env.REPO_URL }}"
-          echo "📁 Deploy Path: ${{ env.DEPLOY_PATH }}"
-          
           ssh root@77.37.121.27 "
             if [ ! -d '${{ env.DEPLOY_PATH }}' ]; then
-              echo '🆕 First-time setup: Creating directory and cloning repository'
               mkdir -p '${{ env.DEPLOY_PATH }}'
               cd /var/www/html
               git clone '${{ env.REPO_URL }}.git' Attendance_tracker
-              cd '${{ env.DEPLOY_PATH }}'
-              
-              echo '📁 Setting up directory permissions...'
               chown -R root:root '${{ env.DEPLOY_PATH }}'
               chmod -R 755 '${{ env.DEPLOY_PATH }}'
-              
-              echo '✅ Repository cloned successfully'
             else
-              echo '📁 Directory exists, checking git configuration...'
               cd '${{ env.DEPLOY_PATH }}'
-              
-              # Verify and fix git remote if needed
               CURRENT_REMOTE=\$(git config --get remote.origin.url 2>/dev/null || echo 'none')
               EXPECTED_REMOTE='${{ env.REPO_URL }}.git'
-              
               if [ \"\$CURRENT_REMOTE\" != \"\$EXPECTED_REMOTE\" ]; then
-                echo '🔧 Updating git remote URL...'
                 git remote set-url origin \"\$EXPECTED_REMOTE\" 2>/dev/null || git remote add origin \"\$EXPECTED_REMOTE\"
-                echo \"✅ Remote updated: \$EXPECTED_REMOTE\"
-              else
-                echo '✅ Git remote is correctly configured'
               fi
             fi
           "
 
       - name: Deploy Code
-        if: github.event.inputs.deployment_type == 'full' || github.event.inputs.deployment_type == 'frontend_only' || github.event.inputs.deployment_type == 'backend_only' || github.event_name == 'push'
         run: |
           echo "🔄 Deploying latest changes..."
-          echo "🎯 Branch: ${{ github.ref_name }}"
-          echo "📋 Commit: ${{ github.sha }}"
-          
           ssh root@77.37.121.27 "
             cd '${{ env.DEPLOY_PATH }}' && 
-            echo '🔍 Current git status:' && 
-            git status --porcelain || true &&
-            echo '💾 Stashing any local changes...' &&
-            git stash push -m 'Auto-stash before deployment $(date)' || true && 
-            echo '📥 Fetching latest changes...' &&
+            git stash push -m 'Auto-stash before deployment' || true && 
             git fetch origin ${{ github.ref_name }} &&
-            echo '🔄 Pulling latest code...' &&
             git pull origin ${{ github.ref_name }} && 
             echo '✅ Code deployed successfully'
-            echo '📊 Current commit:' && git log --oneline -1
           "
 
-      - name: Generate Production Environment Files
+      - name: Create Environment Files
         run: |
-          echo "🔧 Generating production environment files from GitHub Secrets..."
+          echo "🔧 Creating environment files..."
           ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' && 
+            cd '${{ env.DEPLOY_PATH }}'
             
-            echo '📝 Creating root .env file for Docker Compose...'
-            cat > .env << 'ROOT_ENV_EOF'
-# Docker Compose Environment Variables
-NODE_ENV=production
-PORT=5000
-FRONTEND_PORT=80
-
-# Database Configuration
-DB_HOST=postgres
-DB_PORT=5432
-DB_NAME=${{ secrets.DB_NAME }}
-DB_USER=${{ secrets.DB_USER }}
-DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-
-# Redis Configuration
-REDIS_PORT=6379
-
-# API URLs
-VITE_API_URL=https://syncli.cloud/api/v1
-ROOT_ENV_EOF
-
-            echo '📝 Creating backend/.env file...'
-            cat > backend/.env << 'BACKEND_ENV_EOF'
-# Environment
-NODE_ENV=production
-PORT=5000
-
-# Database
-DB_HOST=postgres
-DB_PORT=5432
-DB_NAME=${{ secrets.DB_NAME }}
-DB_USER=${{ secrets.DB_USER }}
-DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-DB_DIALECT=postgres
-
-# Redis
-REDIS_HOST=redis
-REDIS_PORT=6379
-REDIS_PASSWORD=
-REDIS_DB=0
-REDIS_URL=redis://redis:6379
-
-# JWT
-JWT_SECRET=${{ secrets.JWT_SECRET }}
-JWT_EXPIRES_IN=24h
-REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }}
-REFRESH_TOKEN_EXPIRES_IN=7d
-JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
-JWT_REFRESH_EXPIRES_IN=30d
-JWT_COOKIE_EXPIRES_IN=7
-
-# Email Configuration
-EMAIL_HOST=${{ secrets.EMAIL_HOST }}
-EMAIL_PORT=${{ secrets.EMAIL_PORT }}
-EMAIL_SECURE=${{ secrets.EMAIL_SECURE }}
-EMAIL_USER=${{ secrets.EMAIL_USER }}
-EMAIL_PASS=${{ secrets.EMAIL_PASS }}
-EMAIL_FROM=${{ secrets.EMAIL_FROM }}
-
-# Company Information
-COMPANY_NAME=Change Ambassadors
-COMPANY_ADDRESS=Kampala, Uganda
-SUPPORT_EMAIL=support@changeambassadors.com
-
-# YouTube API Configuration
-YOUTUBE_CLIENT_ID=${{ secrets.YOUTUBE_CLIENT_ID }}
-YOUTUBE_CLIENT_SECRET=${{ secrets.YOUTUBE_CLIENT_SECRET }}
-YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}
-YOUTUBE_REDIRECT_URI=https://syncli.cloud/api/v1/auth/youtube/callback
-
-# File Upload Settings
-MAX_VIDEO_SIZE=134217728
-MAX_FILE_SIZE=10485760
-TEMP_UPLOAD_DIR=/tmp/video-uploads
-UPLOAD_DIR=./uploads
-
-# Cloudinary Configuration
-CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
-CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
-CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
-FRONTEND_URL=https://syncli.cloud
-
-# Social OAuth Configuration
-# Google OAuth
-GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-GOOGLE_REDIRECT_URI=https://syncli.cloud/register
-
-# Facebook OAuth
-FACEBOOK_APP_ID=${{ secrets.FACEBOOK_APP_ID }}
-FACEBOOK_APP_SECRET=${{ secrets.FACEBOOK_APP_SECRET }}
-FACEBOOK_REDIRECT_URI=https://syncli.cloud/register
-
-# GitHub OAuth
-GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}
-GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}
-GITHUB_REDIRECT_URI=https://syncli.cloud/register
-
-# LinkedIn OAuth
-LINKEDIN_CLIENT_ID=${{ secrets.LINKEDIN_CLIENT_ID }}
-LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}
-LINKEDIN_REDIRECT_URI=https://syncli.cloud/register
-
-# Session
-SESSION_SECRET=${{ secrets.SESSION_SECRET }}
-
-# API Keys
-GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
-SENTRY_DSN=${{ secrets.SENTRY_DSN }}
-BACKEND_ENV_EOF
-
-            echo '📝 Creating frontend/.env file...'
-            cat > frontend/.env << 'FRONTEND_ENV_EOF'
-# API Configuration
-VITE_API_BASE_URL=/api/v1
-VITE_API_HOST=syncli.cloud
-VITE_API_PORT=443
-VITE_API_PROTOCOL=https:
-
-# Socket Configuration
-VITE_SOCKET_PATH=/socket.io
-VITE_SOCKET_HOST=syncli.cloud
-VITE_SOCKET_PORT=443
-VITE_SOCKET_PROTOCOL=https:
-
-# App Configuration
-VITE_APP_NAME=Attendance Tracker
-VITE_APP_VERSION=1.0.0
-
-# Feature Flags
-VITE_ENABLE_SOCKET_IO=true
-VITE_ENABLE_NOTIFICATIONS=true
-
-# Security
-VITE_SESSION_TIMEOUT=3600000
-
-# Production Mode
-VITE_USE_PROXY=false
-
-# Theme Configuration
-VITE_THEME_COLOR_PRIMARY=#fddc9a
-VITE_THEME_COLOR_SECONDARY=#000000
-VITE_THEME_COLOR_SUCCESS=#4caf50
-VITE_THEME_COLOR_ERROR=#f44336
-VITE_THEME_COLOR_WARNING=#ff9800
-VITE_THEME_COLOR_INFO=#2196f3
-VITE_THEME_BG_DEFAULT=#f5f5f5
-VITE_THEME_BG_PAPER=#ffffff
-VITE_THEME_TEXT_PRIMARY=#000000
-VITE_THEME_TEXT_SECONDARY=#757575
-
-# OAuth Redirect URLs
-VITE_GOOGLE_REDIRECT_URI=https://syncli.cloud/register
-VITE_FACEBOOK_REDIRECT_URI=https://syncli.cloud/register
-VITE_GITHUB_REDIRECT_URI=https://syncli.cloud/register
-VITE_LINKEDIN_REDIRECT_URI=https://syncli.cloud/register
-FRONTEND_ENV_EOF
+            # Create root .env file
+            echo 'NODE_ENV=production' > .env
+            echo 'PORT=5000' >> .env
+            echo 'FRONTEND_PORT=80' >> .env
+            echo 'DB_HOST=postgres' >> .env
+            echo 'DB_PORT=5432' >> .env
+            echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
+            echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
+            echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
+            echo 'REDIS_PORT=6379' >> .env
+            echo 'VITE_API_URL=https://syncli.cloud/api/v1' >> .env
+            echo 'JWT_SECRET=${{ secrets.JWT_SECRET }}' >> .env
+            echo 'EMAIL_HOST=${{ secrets.EMAIL_HOST }}' >> .env
+            echo 'EMAIL_PORT=${{ secrets.EMAIL_PORT }}' >> .env
+            echo 'EMAIL_USER=${{ secrets.EMAIL_USER }}' >> .env
+            echo 'EMAIL_PASS=${{ secrets.EMAIL_PASS }}' >> .env
+            echo 'CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}' >> .env
+            echo 'CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}' >> .env
+            echo 'CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}' >> .env
             
-            # Set secure permissions
+            # Create backend .env file
+            echo 'NODE_ENV=production' > backend/.env
+            echo 'PORT=5000' >> backend/.env
+            echo 'DB_HOST=postgres' >> backend/.env
+            echo 'DB_PORT=5432' >> backend/.env
+            echo 'DB_NAME=${{ secrets.DB_NAME }}' >> backend/.env
+            echo 'DB_USER=${{ secrets.DB_USER }}' >> backend/.env
+            echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> backend/.env
+            echo 'DB_DIALECT=postgres' >> backend/.env
+            echo 'REDIS_HOST=redis' >> backend/.env
+            echo 'REDIS_PORT=6379' >> backend/.env
+            echo 'REDIS_URL=redis://redis:6379' >> backend/.env
+            echo 'JWT_SECRET=${{ secrets.JWT_SECRET }}' >> backend/.env
+            echo 'JWT_EXPIRES_IN=24h' >> backend/.env
+            echo 'REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }}' >> backend/.env
+            echo 'JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}' >> backend/.env
+            echo 'EMAIL_HOST=${{ secrets.EMAIL_HOST }}' >> backend/.env
+            echo 'EMAIL_PORT=${{ secrets.EMAIL_PORT }}' >> backend/.env
+            echo 'EMAIL_SECURE=${{ secrets.EMAIL_SECURE }}' >> backend/.env
+            echo 'EMAIL_USER=${{ secrets.EMAIL_USER }}' >> backend/.env
+            echo 'EMAIL_PASS=${{ secrets.EMAIL_PASS }}' >> backend/.env
+            echo 'EMAIL_FROM=${{ secrets.EMAIL_FROM }}' >> backend/.env
+            echo 'COMPANY_NAME=Change Ambassadors' >> backend/.env
+            echo 'COMPANY_ADDRESS=Kampala, Uganda' >> backend/.env
+            echo 'SUPPORT_EMAIL=support@changeambassadors.com' >> backend/.env
+            echo 'YOUTUBE_CLIENT_ID=${{ secrets.YOUTUBE_CLIENT_ID }}' >> backend/.env
+            echo 'YOUTUBE_CLIENT_SECRET=${{ secrets.YOUTUBE_CLIENT_SECRET }}' >> backend/.env
+            echo 'YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}' >> backend/.env
+            echo 'YOUTUBE_REDIRECT_URI=https://syncli.cloud/api/v1/auth/youtube/callback' >> backend/.env
+            echo 'MAX_VIDEO_SIZE=134217728' >> backend/.env
+            echo 'MAX_FILE_SIZE=10485760' >> backend/.env
+            echo 'TEMP_UPLOAD_DIR=/tmp/video-uploads' >> backend/.env
+            echo 'UPLOAD_DIR=./uploads' >> backend/.env
+            echo 'CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}' >> backend/.env
+            echo 'CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}' >> backend/.env
+            echo 'CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}' >> backend/.env
+            echo 'FRONTEND_URL=https://syncli.cloud' >> backend/.env
+            echo 'GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}' >> backend/.env
+            echo 'GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}' >> backend/.env
+            echo 'GOOGLE_REDIRECT_URI=https://syncli.cloud/register' >> backend/.env
+            echo 'FACEBOOK_APP_ID=${{ secrets.FACEBOOK_APP_ID }}' >> backend/.env
+            echo 'FACEBOOK_APP_SECRET=${{ secrets.FACEBOOK_APP_SECRET }}' >> backend/.env
+            echo 'FACEBOOK_REDIRECT_URI=https://syncli.cloud/register' >> backend/.env
+            echo 'LINKEDIN_CLIENT_ID=${{ secrets.LINKEDIN_CLIENT_ID }}' >> backend/.env
+            echo 'LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}' >> backend/.env
+            echo 'LINKEDIN_REDIRECT_URI=https://syncli.cloud/register' >> backend/.env
+            echo 'SESSION_SECRET=${{ secrets.SESSION_SECRET }}' >> backend/.env
+            echo 'GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}' >> backend/.env
+            echo 'SENTRY_DSN=${{ secrets.SENTRY_DSN }}' >> backend/.env
+            
+            # Create frontend .env file
+            echo 'VITE_API_BASE_URL=/api/v1' > frontend/.env
+            echo 'VITE_API_HOST=syncli.cloud' >> frontend/.env
+            echo 'VITE_API_PORT=443' >> frontend/.env
+            echo 'VITE_API_PROTOCOL=https:' >> frontend/.env
+            echo 'VITE_SOCKET_PATH=/socket.io' >> frontend/.env
+            echo 'VITE_SOCKET_HOST=syncli.cloud' >> frontend/.env
+            echo 'VITE_SOCKET_PORT=443' >> frontend/.env
+            echo 'VITE_SOCKET_PROTOCOL=https:' >> frontend/.env
+            echo 'VITE_APP_NAME=Attendance Tracker' >> frontend/.env
+            echo 'VITE_APP_VERSION=1.0.0' >> frontend/.env
+            echo 'VITE_ENABLE_SOCKET_IO=true' >> frontend/.env
+            echo 'VITE_ENABLE_NOTIFICATIONS=true' >> frontend/.env
+            echo 'VITE_SESSION_TIMEOUT=3600000' >> frontend/.env
+            echo 'VITE_USE_PROXY=false' >> frontend/.env
+            echo 'VITE_THEME_COLOR_PRIMARY=#fddc9a' >> frontend/.env
+            echo 'VITE_THEME_COLOR_SECONDARY=#000000' >> frontend/.env
+            echo 'VITE_THEME_COLOR_SUCCESS=#4caf50' >> frontend/.env
+            echo 'VITE_THEME_COLOR_ERROR=#f44336' >> frontend/.env
+            echo 'VITE_THEME_COLOR_WARNING=#ff9800' >> frontend/.env
+            echo 'VITE_THEME_COLOR_INFO=#2196f3' >> frontend/.env
+            echo 'VITE_THEME_BG_DEFAULT=#f5f5f5' >> frontend/.env
+            echo 'VITE_THEME_BG_PAPER=#ffffff' >> frontend/.env
+            echo 'VITE_THEME_TEXT_PRIMARY=#000000' >> frontend/.env
+            echo 'VITE_THEME_TEXT_SECONDARY=#757575' >> frontend/.env
+            echo 'VITE_GOOGLE_REDIRECT_URI=https://syncli.cloud/register' >> frontend/.env
+            echo 'VITE_FACEBOOK_REDIRECT_URI=https://syncli.cloud/register' >> frontend/.env
+            echo 'VITE_GITHUB_REDIRECT_URI=https://syncli.cloud/register' >> frontend/.env
+            echo 'VITE_LINKEDIN_REDIRECT_URI=https://syncli.cloud/register' >> frontend/.env
+            
+            # Set permissions
             chmod 600 .env backend/.env frontend/.env
-            
-            echo '✅ Environment files generated successfully'
-            echo '📄 Environment files summary:'
+            echo '✅ Environment files created successfully'
             ls -la .env backend/.env frontend/.env
           "
 
-      - name: Build and Deploy Backend
-        if: github.event.inputs.deployment_type == 'full' || github.event.inputs.deployment_type == 'backend_only' || github.event_name == 'push'
+      - name: Build and Start Services
         run: |
-          echo "🚀 Building and deploying backend..."
+          echo "🚀 Building and starting services..."
           ssh root@77.37.121.27 "
             cd '${{ env.DEPLOY_PATH }}' && 
-            echo '📦 Building backend Docker image...' && 
-            docker-compose -f docker-compose.prod.yml build backend && 
-            echo '🔄 Stopping backend service...' && 
-            docker-compose -f docker-compose.prod.yml stop backend 2>/dev/null || echo 'Backend was not running' &&
-            echo '✅ Backend built successfully'
-          "
-
-      - name: Run Database Migrations
-        if: github.event.inputs.deployment_type == 'full' || github.event.inputs.deployment_type == 'migrations_only' || github.event.inputs.deployment_type == 'backend_only' || github.event_name == 'push'
-        run: |
-          echo "📜 Running database migrations..."
-          ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' && 
-            echo '🔍 Checking for migrations...' && 
-            
-            # Start database services first
-            echo '🗄️ Starting database services...' &&
-            docker-compose -f docker-compose.prod.yml up -d postgres redis 2>/dev/null || echo 'Database services already running' &&
+            docker-compose -f docker-compose.prod.yml down || true &&
+            docker-compose -f docker-compose.prod.yml up -d postgres redis &&
             sleep 10 &&
-            
-            if [ -d 'backend/migrations' ] && [ \"\$(ls -A backend/migrations 2>/dev/null)\" ]; then
-              echo '📋 Running Sequelize migrations...' && 
-              docker-compose -f docker-compose.prod.yml run --rm backend npm run migrate || 
-              docker-compose -f docker-compose.prod.yml run --rm backend npx sequelize-cli db:migrate || 
-              echo '⚠️ Sequelize migration failed or not found'
-            elif [ -d 'backend/prisma' ] && [ -f 'backend/prisma/schema.prisma' ]; then
-              echo '📋 Running Prisma migrations...' &&
-              docker-compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy || 
-              echo '⚠️ Prisma migration failed'
-            elif [ -d 'backend/database/migrations' ] && [ \"\$(ls -A backend/database/migrations 2>/dev/null)\" ]; then
-              echo '📋 Running database migrations from database/migrations...' &&
-              docker-compose -f docker-compose.prod.yml run --rm backend npm run db:migrate || 
-              echo '⚠️ Database migration failed'
-            else
-              echo '📝 No migrations found, skipping...'
-            fi && 
-            echo '✅ Migrations completed'
-          "
-
-      - name: Start Backend Service
-        if: github.event.inputs.deployment_type == 'full' || github.event.inputs.deployment_type == 'backend_only' || github.event_name == 'push'
-        run: |
-          echo "🔄 Starting backend service..."
-          ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' && 
-            docker-compose -f docker-compose.prod.yml up -d backend && 
-            echo '✅ Backend service started'
-          "
-
-      - name: Build and Deploy Frontend
-        if: github.event.inputs.deployment_type == 'full' || github.event.inputs.deployment_type == 'frontend_only' || github.event_name == 'push'
-        run: |
-          echo "🎨 Building and deploying frontend..."
-          ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' && 
-            echo '📦 Building frontend Docker image...' && 
-            docker-compose -f docker-compose.prod.yml build frontend && 
-            echo '🔄 Stopping frontend service...' && 
-            docker-compose -f docker-compose.prod.yml stop frontend 2>/dev/null || echo 'Frontend was not running' &&
-            echo '🔄 Starting frontend service...' && 
-            docker-compose -f docker-compose.prod.yml up -d frontend && 
-            echo '✅ Frontend deployed successfully'
-          "
-
-      - name: Cleanup Docker Resources
-        run: |
-          echo "🧹 Cleaning up Docker resources..."
-          ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' &&
-            docker system prune -f && 
-            docker image prune -f && 
-            echo '✅ Docker cleanup completed'
+            docker-compose -f docker-compose.prod.yml build backend frontend &&
+            docker-compose -f docker-compose.prod.yml up -d backend frontend &&
+            echo '✅ Services started successfully'
           "
 
       - name: Health Check
@@ -351,44 +197,12 @@ FRONTEND_ENV_EOF
             cd '${{ env.DEPLOY_PATH }}' && 
             echo '=== Docker Services Status ===' && 
             docker-compose -f docker-compose.prod.yml ps && 
-            echo '' && 
-            echo '=== Backend Health Check ===' && 
             sleep 20 && 
-            curl -f http://localhost:5000/health || curl -f http://localhost:5000/api/health || curl -f http://localhost:5000/ || echo '⚠️ Backend health check failed' && 
-            echo '' && 
+            echo '=== Backend Health Check ===' && 
+            curl -f http://localhost:5000/health || curl -f http://localhost:5000/ || echo '⚠️ Backend health check failed' && 
             echo '=== Frontend Health Check ===' && 
-            curl -f http://localhost:5173/ || curl -f http://localhost:80/ || echo '⚠️ Frontend health check failed' && 
+            curl -f http://localhost:80/ || echo '⚠️ Frontend health check failed' && 
             echo '✅ Health checks completed'
-          "
-
-      - name: Verify Deployment
-        run: |
-          echo "🔍 Verifying deployment..."
-          ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' && 
-            echo '=== Repository Information ===' &&
-            echo 'Repository: ${{ env.REPO_URL }}' &&
-            echo 'Branch: ${{ github.ref_name }}' &&
-            echo 'Commit: ${{ github.sha }}' &&
-            echo '' &&
-            echo '=== Git Status ===' && 
-            git log --oneline -1 && 
-            git remote -v &&
-            echo '' && 
-            echo '=== Environment Files ===' &&
-            echo 'Root .env:' && ls -la .env 2>/dev/null || echo 'Root .env not found' &&
-            echo 'Backend .env:' && ls -la backend/.env 2>/dev/null || echo 'Backend .env not found' &&
-            echo 'Frontend .env:' && ls -la frontend/.env 2>/dev/null || echo 'Frontend .env not found' &&
-            echo '' && 
-            echo '=== Running Containers ===' && 
-            docker ps --filter 'name=attendance' --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' && 
-            echo '' && 
-            echo '=== Nginx Configuration Test ===' && 
-            nginx -t 2>/dev/null && echo '✅ Nginx config is valid' || echo '⚠️ Nginx config check failed' && 
-            echo '' && 
-            echo '=== External Health Check ===' && 
-            curl -I https://syncli.cloud/ || echo '⚠️ External health check failed' && 
-            echo '=== Verification completed ==='
           "
 
       - name: Final Status
@@ -398,12 +212,6 @@ FRONTEND_ENV_EOF
           echo "🌐 Application URL: https://syncli.cloud/"
           echo "🔧 Backend API: https://syncli.cloud/api/"
           echo "📱 Frontend: https://syncli.cloud/"
-          echo "📋 Repository: ${{ env.REPO_URL }}"
-          echo "🎯 Branch: ${{ github.ref_name }}"
-          echo "📋 Commit: ${{ github.sha }}"
-          echo ""
-          echo "🔒 Environment files generated from GitHub Secrets"
-          echo ""
           if [ "${{ job.status }}" = "success" ]; then
             echo "✅ Deployment successful!"
           else
