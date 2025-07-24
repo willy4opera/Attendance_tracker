@@ -69,6 +69,7 @@ services:
         delay: 5s
         max_attempts: 3
 
+  # Frontend serves on port 5173 (as expected by system nginx)
   frontend:
     build:
       context: .
@@ -76,7 +77,7 @@ services:
       args:
         VITE_API_URL: https://syncli.cloud/api/v1
     ports:
-      - "80:80"
+      - "5173:80"
     depends_on:
       - backend
     networks:
