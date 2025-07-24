@@ -135,98 +135,98 @@ jobs:
             else
               echo '⚠️ Generate-env script not found, creating environment files manually...'
               
-              # Create backend .env file
-              cat > backend/.env << BACKEND_ENV
-NODE_ENV=production
-PORT=5000
-DB_HOST=postgres
-DB_PORT=5432
-DB_NAME=attendance_tracker_prod
-DB_USER=postgres
-DB_PASSWORD=\$DB_PASSWORD
-DB_DIALECT=postgres
-REDIS_HOST=redis
-REDIS_PORT=6379
-REDIS_PASSWORD=
-REDIS_DB=0
-REDIS_URL=redis://redis:6379
-JWT_SECRET=\$JWT_SECRET
-JWT_EXPIRES_IN=24h
-REFRESH_TOKEN_SECRET=\$REFRESH_TOKEN_SECRET
-REFRESH_TOKEN_EXPIRES_IN=7d
-JWT_REFRESH_SECRET=\$JWT_REFRESH_SECRET
-JWT_REFRESH_EXPIRES_IN=30d
-JWT_COOKIE_EXPIRES_IN=7
-EMAIL_HOST=\$EMAIL_HOST
-EMAIL_PORT=\$EMAIL_PORT
-EMAIL_SECURE=\$EMAIL_SECURE
-EMAIL_USER=\$EMAIL_USER
-EMAIL_PASS=\$EMAIL_PASS
-EMAIL_FROM=\$EMAIL_FROM
-COMPANY_NAME=Change Ambassadors
-COMPANY_ADDRESS=Kampala, Uganda
-SUPPORT_EMAIL=support@changeambassadors.com
-YOUTUBE_CLIENT_ID=\$YOUTUBE_CLIENT_ID
-YOUTUBE_CLIENT_SECRET=\$YOUTUBE_CLIENT_SECRET
-YOUTUBE_API_KEY=\$YOUTUBE_API_KEY
-YOUTUBE_REDIRECT_URI=https://syncli.cloud/api/v1/auth/youtube/callback
-MAX_VIDEO_SIZE=134217728
-MAX_FILE_SIZE=10485760
-TEMP_UPLOAD_DIR=/tmp/video-uploads
-UPLOAD_DIR=./uploads
-CLOUDINARY_CLOUD_NAME=\$CLOUDINARY_CLOUD_NAME
-CLOUDINARY_API_KEY=\$CLOUDINARY_API_KEY
-CLOUDINARY_API_SECRET=\$CLOUDINARY_API_SECRET
-FRONTEND_URL=https://syncli.cloud
-GOOGLE_CLIENT_ID=\$GOOGLE_CLIENT_ID
-GOOGLE_CLIENT_SECRET=\$GOOGLE_CLIENT_SECRET
-GOOGLE_REDIRECT_URI=https://syncli.cloud/register
-FACEBOOK_APP_ID=\$FACEBOOK_APP_ID
-FACEBOOK_APP_SECRET=\$FACEBOOK_APP_SECRET
-FACEBOOK_REDIRECT_URI=https://syncli.cloud/register
-GITHUB_CLIENT_ID=\$GITHUB_CLIENT_ID
-GITHUB_CLIENT_SECRET=\$GITHUB_CLIENT_SECRET
-GITHUB_REDIRECT_URI=https://syncli.cloud/register
-LINKEDIN_CLIENT_ID=\$LINKEDIN_CLIENT_ID
-LINKEDIN_CLIENT_SECRET=\$LINKEDIN_CLIENT_SECRET
-LINKEDIN_REDIRECT_URI=https://syncli.cloud/register
-SESSION_SECRET=\$SESSION_SECRET
-GOOGLE_API_KEY=\$GOOGLE_API_KEY
-SENTRY_DSN=\$SENTRY_DSN
-BACKEND_ENV
+              # Create backend .env file using printf to avoid YAML syntax issues
+              printf '%s\n' \
+                'NODE_ENV=production' \
+                'PORT=5000' \
+                'DB_HOST=postgres' \
+                'DB_PORT=5432' \
+                'DB_NAME=attendance_tracker_prod' \
+                'DB_USER=postgres' \
+                'DB_PASSWORD='\$DB_PASSWORD \
+                'DB_DIALECT=postgres' \
+                'REDIS_HOST=redis' \
+                'REDIS_PORT=6379' \
+                'REDIS_PASSWORD=' \
+                'REDIS_DB=0' \
+                'REDIS_URL=redis://redis:6379' \
+                'JWT_SECRET='\$JWT_SECRET \
+                'JWT_EXPIRES_IN=24h' \
+                'REFRESH_TOKEN_SECRET='\$REFRESH_TOKEN_SECRET \
+                'REFRESH_TOKEN_EXPIRES_IN=7d' \
+                'JWT_REFRESH_SECRET='\$JWT_REFRESH_SECRET \
+                'JWT_REFRESH_EXPIRES_IN=30d' \
+                'JWT_COOKIE_EXPIRES_IN=7' \
+                'EMAIL_HOST='\$EMAIL_HOST \
+                'EMAIL_PORT='\$EMAIL_PORT \
+                'EMAIL_SECURE='\$EMAIL_SECURE \
+                'EMAIL_USER='\$EMAIL_USER \
+                'EMAIL_PASS='\$EMAIL_PASS \
+                'EMAIL_FROM='\$EMAIL_FROM \
+                'COMPANY_NAME=Change Ambassadors' \
+                'COMPANY_ADDRESS=Kampala, Uganda' \
+                'SUPPORT_EMAIL=support@changeambassadors.com' \
+                'YOUTUBE_CLIENT_ID='\$YOUTUBE_CLIENT_ID \
+                'YOUTUBE_CLIENT_SECRET='\$YOUTUBE_CLIENT_SECRET \
+                'YOUTUBE_API_KEY='\$YOUTUBE_API_KEY \
+                'YOUTUBE_REDIRECT_URI=https://syncli.cloud/api/v1/auth/youtube/callback' \
+                'MAX_VIDEO_SIZE=134217728' \
+                'MAX_FILE_SIZE=10485760' \
+                'TEMP_UPLOAD_DIR=/tmp/video-uploads' \
+                'UPLOAD_DIR=./uploads' \
+                'CLOUDINARY_CLOUD_NAME='\$CLOUDINARY_CLOUD_NAME \
+                'CLOUDINARY_API_KEY='\$CLOUDINARY_API_KEY \
+                'CLOUDINARY_API_SECRET='\$CLOUDINARY_API_SECRET \
+                'FRONTEND_URL=https://syncli.cloud' \
+                'GOOGLE_CLIENT_ID='\$GOOGLE_CLIENT_ID \
+                'GOOGLE_CLIENT_SECRET='\$GOOGLE_CLIENT_SECRET \
+                'GOOGLE_REDIRECT_URI=https://syncli.cloud/register' \
+                'FACEBOOK_APP_ID='\$FACEBOOK_APP_ID \
+                'FACEBOOK_APP_SECRET='\$FACEBOOK_APP_SECRET \
+                'FACEBOOK_REDIRECT_URI=https://syncli.cloud/register' \
+                'GITHUB_CLIENT_ID='\$GITHUB_CLIENT_ID \
+                'GITHUB_CLIENT_SECRET='\$GITHUB_CLIENT_SECRET \
+                'GITHUB_REDIRECT_URI=https://syncli.cloud/register' \
+                'LINKEDIN_CLIENT_ID='\$LINKEDIN_CLIENT_ID \
+                'LINKEDIN_CLIENT_SECRET='\$LINKEDIN_CLIENT_SECRET \
+                'LINKEDIN_REDIRECT_URI=https://syncli.cloud/register' \
+                'SESSION_SECRET='\$SESSION_SECRET \
+                'GOOGLE_API_KEY='\$GOOGLE_API_KEY \
+                'SENTRY_DSN='\$SENTRY_DSN \
+                > backend/.env
 
-              # Create frontend .env file
-              cat > frontend/.env << FRONTEND_ENV
-NODE_ENV=production
-VITE_API_BASE_URL=/api/v1
-VITE_API_HOST=syncli.cloud
-VITE_API_PORT=443
-VITE_API_PROTOCOL=https:
-VITE_SOCKET_PATH=/socket.io
-VITE_SOCKET_HOST=syncli.cloud
-VITE_SOCKET_PORT=443
-VITE_SOCKET_PROTOCOL=https:
-VITE_APP_NAME=Attendance Tracker
-VITE_APP_VERSION=1.0.0
-VITE_ENABLE_SOCKET_IO=true
-VITE_ENABLE_NOTIFICATIONS=true
-VITE_SESSION_TIMEOUT=3600000
-VITE_USE_PROXY=false
-VITE_THEME_COLOR_PRIMARY=#fddc9a
-VITE_THEME_COLOR_SECONDARY=#000000
-VITE_THEME_COLOR_SUCCESS=#4caf50
-VITE_THEME_COLOR_ERROR=#f44336
-VITE_THEME_COLOR_WARNING=#ff9800
-VITE_THEME_COLOR_INFO=#2196f3
-VITE_THEME_BG_DEFAULT=#f5f5f5
-VITE_THEME_BG_PAPER=#ffffff
-VITE_THEME_TEXT_PRIMARY=#000000
-VITE_THEME_TEXT_SECONDARY=#757575
-VITE_GOOGLE_REDIRECT_URI=https://syncli.cloud/register
-VITE_FACEBOOK_REDIRECT_URI=https://syncli.cloud/register
-VITE_GITHUB_REDIRECT_URI=https://syncli.cloud/register
-VITE_LINKEDIN_REDIRECT_URI=https://syncli.cloud/register
-FRONTEND_ENV
+              # Create frontend .env file using printf to avoid YAML syntax issues
+              printf '%s\n' \
+                'NODE_ENV=production' \
+                'VITE_API_BASE_URL=/api/v1' \
+                'VITE_API_HOST=syncli.cloud' \
+                'VITE_API_PORT=443' \
+                'VITE_API_PROTOCOL=https:' \
+                'VITE_SOCKET_PATH=/socket.io' \
+                'VITE_SOCKET_HOST=syncli.cloud' \
+                'VITE_SOCKET_PORT=443' \
+                'VITE_SOCKET_PROTOCOL=https:' \
+                'VITE_APP_NAME=Attendance Tracker' \
+                'VITE_APP_VERSION=1.0.0' \
+                'VITE_ENABLE_SOCKET_IO=true' \
+                'VITE_ENABLE_NOTIFICATIONS=true' \
+                'VITE_SESSION_TIMEOUT=3600000' \
+                'VITE_USE_PROXY=false' \
+                'VITE_THEME_COLOR_PRIMARY=#fddc9a' \
+                'VITE_THEME_COLOR_SECONDARY=#000000' \
+                'VITE_THEME_COLOR_SUCCESS=#4caf50' \
+                'VITE_THEME_COLOR_ERROR=#f44336' \
+                'VITE_THEME_COLOR_WARNING=#ff9800' \
+                'VITE_THEME_COLOR_INFO=#2196f3' \
+                'VITE_THEME_BG_DEFAULT=#f5f5f5' \
+                'VITE_THEME_BG_PAPER=#ffffff' \
+                'VITE_THEME_TEXT_PRIMARY=#000000' \
+                'VITE_THEME_TEXT_SECONDARY=#757575' \
+                'VITE_GOOGLE_REDIRECT_URI=https://syncli.cloud/register' \
+                'VITE_FACEBOOK_REDIRECT_URI=https://syncli.cloud/register' \
+                'VITE_GITHUB_REDIRECT_URI=https://syncli.cloud/register' \
+                'VITE_LINKEDIN_REDIRECT_URI=https://syncli.cloud/register' \
+                > frontend/.env
             fi
             
             # Set secure permissions
