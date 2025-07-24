@@ -125,11 +125,11 @@ jobs:
       working-directory: ./frontend
       run: npm run lint 2>/dev/null || echo "Linting completed with warnings"
 
-    - name: Run frontend tests
+    - name: Run frontend tests (Vitest)
       working-directory: ./frontend
       env:
         CI: true
-      run: npm test 2>/dev/null || echo "Tests completed"
+      run: npm run test -- --run --reporter=verbose 2>/dev/null || echo "Tests completed"
 
     - name: Build frontend
       working-directory: ./frontend
