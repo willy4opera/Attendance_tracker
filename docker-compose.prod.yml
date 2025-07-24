@@ -39,7 +39,6 @@ services:
     extends:
       file: docker-compose.yml
       service: backend
-    container_name: attendance_backend_prod
     environment:
       NODE_ENV: production
       DB_NAME: attendance_tracker_prod
@@ -65,7 +64,6 @@ services:
     extends:
       file: docker-compose.yml
       service: frontend
-    container_name: attendance_frontend_prod
     ports:
       - "80:80"
     networks:

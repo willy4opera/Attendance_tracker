@@ -65,6 +65,17 @@ jobs:
             echo '✅ Code deployed successfully'
           "
 
+      - name: Fix Docker Compose Configuration
+        run: |
+          echo "🔧 Fixing Docker Compose configuration conflicts..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' &&
+            # Remove container_name when using replicas to avoid conflicts
+            sed -i '/container_name: attendance_backend_prod/d' docker-compose.prod.yml &&
+            sed -i '/container_name: attendance_frontend_prod/d' docker-compose.prod.yml &&
+            echo '✅ Docker Compose configuration fixed'
+          "
+
       - name: Create Environment Files
         run: |
           echo "🔧 Creating environment files..."
@@ -175,6 +186,16 @@ jobs:
             chmod 600 .env backend/.env frontend/.env
             echo '✅ Environment files created successfully'
             ls -la .env backend/.env frontend/.env
+          "
+
+      - name: Validate Docker Compose Configuration
+        run: |
+          echo "🔍 Validating Docker Compose configuration..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' &&
+            docker-compose -f docker-compose.prod.yml config --quiet && 
+            echo '✅ Docker Compose configuration is valid' || 
+            (echo '❌ Docker Compose configuration has errors' && exit 1)
           "
 
       - name: Build and Start Services
