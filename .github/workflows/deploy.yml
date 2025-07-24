@@ -91,7 +91,7 @@ jobs:
             echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
-            echo 'REDIS_PORT=6379' >> .env
+            echo 'REDIS_PORT=6380' >> .env
             echo 'VITE_API_URL=https://syncli.cloud/api/v1' >> .env
             echo 'JWT_SECRET=${{ secrets.JWT_SECRET }}' >> .env
             echo 'EMAIL_HOST=${{ secrets.EMAIL_HOST }}' >> .env
@@ -112,7 +112,7 @@ jobs:
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> backend/.env
             echo 'DB_DIALECT=postgres' >> backend/.env
             echo 'REDIS_HOST=redis' >> backend/.env
-            echo 'REDIS_PORT=6379' >> backend/.env
+            echo 'REDIS_PORT=6380' >> backend/.env
             echo 'REDIS_URL=redis://redis:6379' >> backend/.env
             echo 'JWT_SECRET=${{ secrets.JWT_SECRET }}' >> backend/.env
             echo 'JWT_EXPIRES_IN=24h' >> backend/.env
