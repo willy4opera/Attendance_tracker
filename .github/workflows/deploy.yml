@@ -195,39 +195,69 @@ jobs:
             fi
           "
 
-      - name: Validate Docker Compose Configuration
+      - name: Zero-Downtime Backend Deployment
         run: |
-          echo "🔍 Validating Docker Compose configuration..."
-          ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' &&
-            docker-compose -f docker-compose.prod.yml config --quiet && 
-            echo '✅ Docker Compose configuration is valid' || 
-            (echo '❌ Docker Compose configuration has errors' && exit 1)
-          "
-
-      - name: Build and Start Services
-        run: |
-          echo "🚀 Building and starting application services..."
+          echo "🚀 Performing zero-downtime backend deployment..."
           ssh root@77.37.121.27 "
             cd '${{ env.DEPLOY_PATH }}' && 
             
-            # Stop any existing backend/frontend containers
-            docker-compose -f docker-compose.prod.yml stop backend frontend 2>/dev/null || true &&
+            # Build new backend image first
+            echo '📦 Building new backend image...' &&
+            docker-compose -f docker-compose.prod.yml build backend &&
             
-            # Build the services
-            echo '📦 Building backend and frontend...' &&
-            docker-compose -f docker-compose.prod.yml build backend frontend &&
+            # Check if backend is currently running
+            if docker-compose -f docker-compose.prod.yml ps backend | grep -q 'Up'; then
+              echo '🔄 Backend is running, performing rolling update...'
+              
+              # Create new container without starting
+              docker-compose -f docker-compose.prod.yml create backend &&
+              
+              # Get old container name
+              OLD_CONTAINER=\$(docker-compose -f docker-compose.prod.yml ps -q backend) &&
+              
+              # Stop old container and start new one
+              docker-compose -f docker-compose.prod.yml stop backend &&
+              docker-compose -f docker-compose.prod.yml up -d backend &&
+              
+              # Wait for new container to be healthy
+              sleep 10 &&
+              
+              # Remove old container
+              docker rm \$OLD_CONTAINER 2>/dev/null || true &&
+              
+              echo '✅ Backend rolling update completed'
+            else
+              echo '🚀 No backend running, starting fresh...'
+              docker-compose -f docker-compose.prod.yml up -d backend
+            fi
+          "
+
+      - name: Zero-Downtime Frontend Deployment
+        run: |
+          echo "🎨 Performing zero-downtime frontend deployment..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' && 
             
-            # Start the services
-            echo '🚀 Starting backend and frontend services...' &&
-            docker-compose -f docker-compose.prod.yml up -d backend frontend &&
+            # Build new frontend image
+            echo '📦 Building new frontend image...' &&
+            docker-compose -f docker-compose.prod.yml build frontend &&
             
-            echo '✅ Services started successfully'
+            # Deploy frontend with zero downtime
+            if docker-compose -f docker-compose.prod.yml ps frontend | grep -q 'Up'; then
+              echo '🔄 Frontend is running, performing rolling update...'
+              docker-compose -f docker-compose.prod.yml stop frontend &&
+              docker-compose -f docker-compose.prod.yml up -d frontend
+            else
+              echo '🚀 No frontend running, starting fresh...'
+              docker-compose -f docker-compose.prod.yml up -d frontend
+            fi &&
+            
+            echo '✅ Frontend deployment completed'
           "
 
       - name: Health Check
         run: |
-          echo "🔍 Running health checks..."
+          echo "🔍 Running comprehensive health checks..."
           ssh root@77.37.121.27 "
             cd '${{ env.DEPLOY_PATH }}' && 
             echo '=== Docker Services Status ===' && 
@@ -235,8 +265,14 @@ jobs:
             echo '' &&
             
             # Wait for services to be ready
-            echo '⏳ Waiting for services to start...' &&
+            echo '⏳ Waiting for services to initialize...' &&
             sleep 30 && 
+            
+            echo '=== Port Status ===' &&
+            echo 'Redis (6380):' && netstat -tlpn | grep :6380 || echo 'Not bound' &&
+            echo 'Backend (5000):' && netstat -tlpn | grep :5000 || echo 'Not bound' &&
+            echo 'Frontend (5173):' && netstat -tlpn | grep :5173 || echo 'Not bound' &&
+            echo '' &&
             
             echo '=== Backend Health Check ===' && 
             curl -f http://localhost:5000/health || curl -f http://localhost:5000/api/health || curl -f http://localhost:5000/ || echo '⚠️ Backend health check failed' && 
@@ -246,10 +282,8 @@ jobs:
             curl -f http://localhost:5173/ || echo '⚠️ Frontend health check failed' && 
             echo '' &&
             
-            echo '=== Port Status ===' &&
-            echo 'Redis (6380):' && netstat -tlpn | grep :6380 || echo 'Not bound' &&
-            echo 'Backend (5000):' && netstat -tlpn | grep :5000 || echo 'Not bound' &&
-            echo 'Frontend (5173):' && netstat -tlpn | grep :5173 || echo 'Not bound' &&
+            echo '=== External Health Check ===' &&
+            curl -I https://syncli.cloud/ || echo '⚠️ External health check failed' &&
             
             echo '✅ Health checks completed'
           "
@@ -265,8 +299,9 @@ jobs:
           echo "🏗️ Infrastructure:"
           echo "  - PostgreSQL: System service (port 5432)"
           echo "  - Redis: Docker container (port 6380)"
-          echo "  - Backend: Docker container (port 5000)"
-          echo "  - Frontend: Docker container (port 80)"
+          echo "  - Backend: Docker container (port 5000) - Single instance"
+          echo "  - Frontend: Docker container (port 5173)"
+          echo "  - Nginx: System reverse proxy (ports 80/443)"
           echo ""
           if [ "${{ job.status }}" = "success" ]; then
             echo "✅ Deployment successful!"

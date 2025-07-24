@@ -21,7 +21,7 @@ services:
           cpus: '1'
           memory: 512M
 
-  # Backend connects to host PostgreSQL (system PostgreSQL on localhost:5432)
+  # Backend connects to host PostgreSQL (single instance to avoid port conflicts)
   backend:
     build:
       context: .
@@ -56,7 +56,6 @@ services:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
     deploy:
-      replicas: 2
       resources:
         limits:
           cpus: '2'
