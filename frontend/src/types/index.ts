@@ -1,6 +1,9 @@
+// Import common types
+import type { ID } from './common';
+
 // Core User type
 export interface User {
-  id: number;
+  id: ID;
   email: string;
   firstName: string;
   lastName: string;
@@ -8,7 +11,7 @@ export interface User {
   profilePicture?: string;
   role: 'admin' | 'moderator' | 'user';
   department?: {
-    id: number;
+    id: ID;
     name: string;
     code: string;
   };
@@ -96,3 +99,13 @@ export * from './comment';
 export * from './social';
 export * from './apiTypes';
 export * from "./notification";
+// Re-export common types
+export type { ID } from './common';
+export { isUUID, idToString, parseIdFromRoute } from './common';
+
+// Add session and attendance exports
+export type * from "./session";
+export type * from "./attendance";
+
+// Group management types
+export type * from './group';

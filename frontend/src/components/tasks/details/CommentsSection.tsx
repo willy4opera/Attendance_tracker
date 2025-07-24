@@ -7,6 +7,7 @@ import {
   FaTimes,
   FaThumbsUp,
   FaComment,
+  FaComments,
   FaShare,
   FaSmile,
   FaHeart,
@@ -28,9 +29,11 @@ interface CommentsSectionProps {
   isCommentsLoading: boolean;
   commentsError: any;
   onAddComment: (newComment: string, attachments: File[], replyingTo: number | null) => Promise<void>;
-  onRefreshComments: () => void;
+  onRefreshComments: () => Promise<void> | void;
   taskId: number;
   currentUser: User | null;
+  onLikeComment?: (commentId: number, reactionType: string) => Promise<void>;
+  onUnlikeComment?: (commentId: number, reactionType: string) => Promise<void>;
 }
 
 const EMOJI_REACTIONS = [
@@ -63,8 +66,34 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   onAddComment,
   onRefreshComments,
   taskId,
-  currentUser
+  currentUser,
+  onLikeComment,
+  onUnlikeComment
 }) => {
+    // Debug: Log when comments prop changes
+  React.useEffect(() => {
+    console.log('[CommentsSection] Comments prop changed:', comments?.length || 0, 'comments');
+    if (comments && comments.length > 0) {
+      // Check for duplicates
+      const ids = comments.map(c => c.id);
+      const uniqueIds = new Set(ids);
+      if (ids.length !== uniqueIds.size) {
+        console.warn('[CommentsSection] DUPLICATE COMMENTS DETECTED!');
+        console.warn('[CommentsSection] All comment IDs:', ids);
+        console.warn('[CommentsSection] Unique IDs:', Array.from(uniqueIds));
+      }
+      
+      console.log('[CommentsSection] First comment likes:', {
+        id: comments[0].id,
+        likeCount: comments[0].likeCount,
+        likes: comments[0].likes,
+        userReaction: comments[0].userReaction,
+        currentUserId: currentUser?.id,
+        firstLike: comments[0].likes?.[0]
+      });
+    }
+  }, [comments]);
+  
   const [newComment, setNewComment] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -127,7 +156,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
       await onAddComment(newComment.trim() || 'Shared media', attachments, null);
       setNewComment("");
       setAttachments([]);
-      showToast.success('Comment added successfully!');
+      // Don't show success here as parent component handles it
     } catch (error) {
       console.error('Error submitting comment:', error);
       showToast.error('Failed to add comment');
@@ -150,7 +179,8 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
       setReplyText("");
       setReplyingTo(null);
       setShowReplyModal(false);
-      showToast.success('Reply added successfully!');
+      // Don't show success here as it's shown in parent component
+      // The parent component handles the refresh
     } catch (error) {
       console.error('Error submitting reply:', error);
       showToast.error('Failed to add reply');
@@ -158,11 +188,21 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   };
 
   const handleReaction = async (commentId: number, reactionType: string) => {
+    console.log('[CommentsSection] handleReaction called:', { commentId, reactionType });
     try {
-      const response = await commentService.toggleCommentLike(commentId, reactionType);
+      if (onLikeComment) {
+        console.log('[CommentsSection] Using provided onLikeComment function');
+        // Use the hook's method if provided
+        await onLikeComment(commentId, reactionType);
+        console.log('[CommentsSection] onLikeComment completed');
+        showToast.success('Reaction updated!');
+      } else {
+        // Fallback to direct service call
+        const response = await commentService.toggleCommentLike(commentId, reactionType);
+        await onRefreshComments();
+        showToast.success(response.data.liked ? 'Reaction added!' : 'Reaction removed!');
+      }
       setShowReactionPicker(null);
-      onRefreshComments();
-      showToast.success(response.data.liked ? 'Reaction added!' : 'Reaction removed!');
     } catch (error) {
       console.error('Error updating reaction:', error);
       showToast.error('Failed to update reaction');
@@ -184,6 +224,13 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   };
 
   const getUserLikedReaction = (comment: Comment) => {
+    console.log('[CommentsSection] getUserLikedReaction called:', {
+      commentId: comment.id,
+      currentUserId: currentUser?.id,
+      currentUserType: typeof currentUser?.id,
+      likes: comment.likes,
+      likesLength: comment.likes?.length
+    });
     if (!comment.likes || !currentUser) return null;
     const userLike = comment.likes.find(like => like.userId === currentUser.id);
     return userLike ? userLike.reactionType : null;
@@ -403,8 +450,8 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow-lg border p-6">
-      <h2 className="text-xl font-bold mb-6" style={{ color: theme.colors.secondary }}>
-        Comments ({comments.length})
+      <h2 className="text-xl font-bold mb-6 flex items-center" style={{ color: theme.colors.secondary }}>
+        <FaComments className="mr-2" /> Comments ({comments.length})
       </h2>
       <div className="mb-6">
         <div className="flex items-start space-x-4">
@@ -417,7 +464,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 resize-none"
               style={{ 
                 focusBorderColor: theme.colors.primary,
-                '--tw-ring-color': theme.colors.primary 
+                focusRingColor: theme.colors.primary 
               } as any}
               rows={3}
               disabled={isSubmitting}
@@ -547,7 +594,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
               className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 resize-none mb-3"
               style={{ 
                 focusBorderColor: theme.colors.primary,
-                '--tw-ring-color': theme.colors.primary 
+                focusRingColor: theme.colors.primary 
               } as any}
               rows={4}
               maxLength={280}

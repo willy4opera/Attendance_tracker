@@ -1,0 +1,135 @@
+import React, { useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import Swal from 'sweetalert2'
+import theme from '../../config/theme'
+import authService from '../../services/auth.service'
+import { useAuth } from '../../contexts/useAuth'
+import { toastError } from '../../utils/toastHelpers'
+
+export default function OAuthCallback() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { refreshUser } = useAuth()
+
+  useEffect(() => {
+    const handleOAuthCallback = async () => {
+      const urlParams = new URLSearchParams(location.search)
+      const code = urlParams.get('code')
+      const state = urlParams.get('state')
+      const error = urlParams.get('error')
+      const provider = window.location.pathname.split('/').pop()
+
+      if (error) {
+        toastError(`Authentication failed: ${error}`)
+        navigate('/login')
+        return
+      }
+
+      if (!code) {
+        toastError('No authorization code received')
+        navigate('/login')
+        return
+      }
+
+      try {
+        let result
+        
+        // Show loading while processing
+        Swal.fire({
+          title: 'Processing authentication...',
+          html: 'Please wait while we complete your sign-in',
+          allowOutsideClick: false,
+          showConfirmButton: false,
+          background: theme.colors.background.paper,
+          color: theme.colors.primary,
+          didOpen: () => {
+            Swal.showLoading()
+          }
+        })
+
+        switch (provider?.toLowerCase()) {
+          case 'github':
+            result = await authService.handleGitHubAuth(code)
+            break
+          case 'linkedin':
+            result = await authService.handleLinkedInAuth(code)
+            break
+          case 'facebook':
+            // Facebook might send access token directly
+            const accessToken = urlParams.get('access_token')
+            if (accessToken) {
+              result = await authService.handleFacebookAuth(accessToken)
+            }
+            break
+          default:
+            throw new Error('Unknown OAuth provider')
+        }
+
+        if (result) {
+          await refreshUser()
+          
+          Swal.fire({
+            title: `Welcome, ${result.user.firstName}!`,
+            text: `${provider} Sign-in successful`,
+            icon: 'success',
+            confirmButtonColor: theme.colors.primary,
+            background: theme.colors.background.paper,
+            color: theme.colors.primary,
+            timer: 3000,
+            timerProgressBar: true,
+          })
+
+          setTimeout(() => {
+            navigate('/dashboard')
+          }, 1000)
+        }
+      } catch (error: any) {
+        Swal.close()
+        
+        // Handle LinkedIn-specific errors
+        if (provider?.toLowerCase() === 'linkedin') {
+          // Check if this is a recoverable error (user already connected)
+          if (error.isRecoverable || error.message?.includes('already connected')) {
+            toastWarning(error.message || 'Please try logging in again.')
+            // For LinkedIn "already connected" errors, redirect to login
+            setTimeout(() => {
+              navigate('/login')
+            }, 2000)
+            return
+          }
+        }
+        
+        // Handle expired authorization
+        if (error.message?.includes('expired')) {
+          toastError('Authorization expired. Please try again.')
+          navigate('/login')
+          return
+        }
+        
+        // Handle service unavailable
+        if (error.message?.includes('temporarily unavailable')) {
+          toastError(error.message)
+          navigate('/login')
+          return
+        }
+        
+        // Default error handling
+        toastError(`Authentication failed: ${error.message || 'Unknown error'}`)
+        navigate('/login')
+      }
+    }
+
+    handleOAuthCallback()
+  }, [location, navigate, refreshUser])
+
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background.default }}>
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-lg" style={{ color: theme.colors.secondary }}>
+          Completing authentication...
+        </p>
+      </div>
+    </div>
+  )
+}

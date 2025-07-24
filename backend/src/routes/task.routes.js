@@ -23,7 +23,7 @@ const updateTaskValidation = [
   body('title').optional().notEmpty().withMessage('Task title cannot be empty'),
   body('description').optional().isString(),
   body('priority').optional().isIn(['low', 'medium', 'high', 'urgent']).withMessage('Invalid priority'),
-  body('status').optional().isIn(['todo', 'in_progress', 'review', 'done', 'cancelled']).withMessage('Invalid status'),
+  body('status').optional().isIn(['todo', 'in-progress', 'under-review', 'done', 'archived', 'cancelled']).withMessage('Invalid status'),
   body('assignedTo').optional().isArray().withMessage('Assigned users must be an array'),
   body('dueDate').optional().isISO8601().withMessage('Invalid due date format'),
   body('labels').optional().isArray().withMessage('Labels must be an array'),
@@ -38,7 +38,7 @@ router.get('/',
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
   query('search').optional().isString().withMessage('Search must be a string'),
-  query('status').optional().isIn(['todo', 'in_progress', 'review', 'done', 'cancelled']).withMessage('Invalid status'),
+  query('status').optional().isIn(['todo', 'in-progress', 'under-review', 'done', 'archived', 'cancelled']).withMessage('Invalid status'),
   query('priority').optional().isIn(['low', 'medium', 'high', 'urgent']).withMessage('Invalid priority'),
   validateRequest,
   taskController.getAllTasks
@@ -89,3 +89,12 @@ router.get('/list/:listId',
 );
 
 module.exports = router;
+
+// Get assignment notifications for a task
+router.get('/:taskId/notifications',
+  param('taskId').isInt().withMessage('Valid task ID is required'),
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
+  validateRequest,
+  require('../controllers/taskAssignmentNotification.controller').getTaskNotifications
+);

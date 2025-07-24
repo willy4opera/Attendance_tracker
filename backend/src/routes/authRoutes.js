@@ -10,6 +10,9 @@ router.post('/login', authController.login);
 router.post('/logout', authController.logout);
 router.post('/refresh-token', authController.refreshToken);
 
+// Social OAuth routes
+router.use('/oauth', require('./oauth.routes'));
+
 // YouTube OAuth routes (must be public)
 router.use(require('./youtube-auth.routes'));
 

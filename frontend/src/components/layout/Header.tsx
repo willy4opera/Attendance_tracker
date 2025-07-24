@@ -45,7 +45,7 @@ export default function Header({ title, user }: HeaderProps) {
   return (
     <>
       <header 
-        className="flex items-center justify-between px-4 lg:px-8 py-3"
+        className="flex items-center justify-between px-4 lg:px-8 py-3 relative"
       >
         {/* Page Title */}
         <div>
@@ -85,11 +85,13 @@ export default function Header({ title, user }: HeaderProps) {
             </button>
           )}
 
-          {/* Notifications */}
-          <NotificationBell className="rounded-lg hover:bg-gray-100 transition-colors" />
+          {/* Notifications - moved up */}
+          <div className="relative -mt-12">
+            <NotificationBell className="rounded-lg hover:bg-gray-100 transition-colors" />
+          </div>
 
-          {/* User Avatar */}
-          <div className="relative w-8 h-8 lg:w-10 lg:h-10">
+          {/* User Avatar - moved up */}
+          <div className="relative w-8 h-8 lg:w-10 lg:h-10 -mt-14">
             {profilePictureUrl && !imageError ? (
               <img
                 src={profilePictureUrl}

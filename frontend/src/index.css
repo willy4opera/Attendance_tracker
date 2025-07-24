@@ -76,3 +76,6 @@
     opacity: 1;
   }
 }
+.kanban-container { width: 100%; display: flex; overflow-x: auto; }
+.task-list { flex: 0 0 300px; margin-right: 10px; }
+.lists-wrapper { display: flex; flex-wrap: nowrap; }

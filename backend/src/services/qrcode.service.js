@@ -77,7 +77,7 @@ class QRCodeService {
    */
   async generateAttendanceQR(sessionId, userId) {
     try {
-      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const token = crypto.randomBytes(32).toString('hex');
       
       // Create attendance URL

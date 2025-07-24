@@ -1,157 +1,171 @@
-import React, { useState } from 'react';
-import { FaComment, FaHeart, FaUser, FaClock } from 'react-icons/fa';
-import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
-import TaskComments from '../tasks/TaskComments';
-import TaskActivityFeed from '../tasks/TaskActivityFeed';
-import UserAvatar from '../social/UserAvatar';
+import React from 'react';
 import type { Task } from '../../types';
+import UserAvatar from '../social/UserAvatar';
+import { format } from 'date-fns';
+import { CalendarIcon, ClockIcon, FlagIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
+import clsx from 'clsx';
 
 interface TaskCardProps {
   task: Task;
-  onUpdate?: (taskId: string, data: any) => void;
-  onDelete?: (taskId: string) => void;
+  isDragging?: boolean;
+  onEdit: (task: Task) => void;
+  onDelete: (taskId: string) => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdate, onDelete }) => {
-  const [showComments, setShowComments] = useState(false);
-  const [showActivity, setShowActivity] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // Enable real-time updates for this task
-  useRealTimeUpdates({ 
-    taskId: task.id, 
-    boardId: task.boardId,
-    enabled: isExpanded 
-  });
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
+export const TaskCard: React.FC<TaskCardProps> = ({ 
+  task, 
+  isDragging = false,
+  onEdit, 
+  onDelete 
+}) => {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return 'bg-red-500';
+        return 'border-red-500 bg-red-50';
       case 'medium':
-        return 'bg-yellow-500';
+        return 'border-yellow-500 bg-yellow-50';
       case 'low':
-        return 'bg-green-500';
+        return 'border-green-500 bg-green-50';
       default:
-        return 'bg-gray-500';
+        return 'border-gray-300 bg-white';
     }
   };
 
+  const getPriorityBadgeColor = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return 'bg-red-100 text-red-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'low':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onEdit(task);
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDelete(task.id.toString());
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
-      {/* Task Header */}
-      <div className="p-3">
-        <div className="flex items-start justify-between mb-2">
-          <h4 
-            className="font-medium text-gray-900 cursor-pointer hover:text-blue-600"
-            onClick={() => setIsExpanded(!isExpanded)}
+    <div
+      className={clsx(
+        'p-4 rounded-lg border-l-4 shadow-sm hover:shadow-md transition-all duration-200',
+        getPriorityColor(task.priority),
+        isDragging && 'opacity-50 cursor-grabbing',
+        !isDragging && 'cursor-grab hover:cursor-grab'
+      )}
+    >
+      {/* Header with title and actions */}
+      <div className="flex justify-between items-start mb-2">
+        <h4 className="text-sm font-medium text-gray-900 flex-1 pr-2">
+          {task.title}
+        </h4>
+        <div className="flex gap-1">
+          <button
+            onClick={handleEdit}
+            className="p-1 text-gray-500 hover:text-blue-600 transition-colors"
+            title="Edit task"
           >
-            {task.title}
-          </h4>
-          <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`} />
-        </div>
-
-        {task.description && (
-          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-            {task.description}
-          </p>
-        )}
-
-        {/* Task Meta */}
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-          {task.dueDate && (
-            <div className="flex items-center space-x-1">
-              <FaClock className="h-3 w-3" />
-              <span>{formatDate(task.dueDate)}</span>
-            </div>
-          )}
-          
-          {task.assignedTo && task.assignedTo.length > 0 && (
-            <div className="flex items-center space-x-1">
-              <FaUser className="h-3 w-3" />
-              <span>{task.assignedTo.length}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Social Stats */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setShowComments(!showComments)}
-              className="flex items-center space-x-1 text-gray-500 hover:text-blue-500 text-xs"
-            >
-              <FaComment className="h-3 w-3" />
-              <span>{task.commentCount || 0}</span>
-            </button>
-            
-            <div className="flex items-center space-x-1 text-gray-500 text-xs">
-              <FaHeart className="h-3 w-3" />
-              <span>{task.likeCount || 0}</span>
-            </div>
-          </div>
-
-          {/* Assigned Users */}
-          {task.creator && (
-            <UserAvatar user={task.creator} size="sm" />
-          )}
+            <PencilIcon className="h-4 w-4" />
+          </button>
+          <button
+            onClick={handleDelete}
+            className="p-1 text-gray-500 hover:text-red-600 transition-colors"
+            title="Delete task"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
-      {/* Expanded Content */}
-      {isExpanded && (
-        <div className="border-t border-gray-200 p-3 space-y-3">
-          {/* Task Details */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Status:</span>
-              <span className={`px-2 py-1 rounded-full text-xs ${
-                task.status === 'done' ? 'bg-green-100 text-green-800' :
-                task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {task.status}
-              </span>
-            </div>
-            
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Priority:</span>
-              <span className={`px-2 py-1 rounded-full text-xs ${
-                task.priority === 'high' ? 'bg-red-100 text-red-800' :
-                task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-green-100 text-green-800'
-              }`}>
-                {task.priority}
-              </span>
-            </div>
+      {/* Description */}
+      {task.description && (
+        <p className="text-xs text-gray-600 mb-3 line-clamp-2">
+          {task.description}
+        </p>
+      )}
+
+      {/* Priority Badge */}
+      <div className="flex items-center gap-2 mb-3">
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPriorityBadgeColor(task.priority)}`}>
+          <FlagIcon className="h-3 w-3 mr-1" />
+          {task.priority}
+        </span>
+      </div>
+
+      {/* Task Meta Information */}
+      <div className="space-y-2 text-xs text-gray-500">
+        {/* Due Date */}
+        {task.dueDate && (
+          <div className="flex items-center gap-1">
+            <CalendarIcon className="h-3.5 w-3.5" />
+            <span>Due: {format(new Date(task.dueDate), 'MMM d, yyyy')}</span>
           </div>
+        )}
 
-          {/* Comments Section */}
-          <TaskComments
-            taskId={task.id}
-            isOpen={showComments}
-            onToggle={() => setShowComments(!showComments)}
-            commentCount={task.commentCount}
-          />
+        {/* Created Date */}
+        <div className="flex items-center gap-1">
+          <ClockIcon className="h-3.5 w-3.5" />
+          <span>Created: {format(new Date(task.createdAt), 'MMM d')}</span>
+        </div>
+      </div>
 
-          {/* Activity Section */}
-          <TaskActivityFeed
-            taskId={task.id}
-            boardId={task.boardId}
-            isOpen={showActivity}
-            onToggle={() => setShowActivity(!showActivity)}
-          />
+      {/* Assigned User */}
+      {task.assignedTo && task.assignedTo.length > 0 && task.creator && (
+        <div className="mt-3 pt-3 border-t border-gray-200">
+          <div className="flex items-center gap-2">
+            <UserAvatar 
+              user={{
+                id: task.creator.id,
+                name: `${task.creator.firstName} ${task.creator.lastName}`,
+                email: task.creator.email,
+                avatar: task.creator.profilePicture
+              }} 
+              size="sm"
+              showTooltip
+            />
+            <span className="text-xs text-gray-600">
+              {task.creator.firstName} {task.creator.lastName}
+            </span>
+          </div>
         </div>
       )}
+
+      {/* Task Stats */}
+      <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+        <div className="flex items-center gap-3">
+          {task.commentCount > 0 && (
+            <span className="flex items-center gap-1">
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              {task.commentCount}
+            </span>
+          )}
+          {task.attachmentCount > 0 && (
+            <span className="flex items-center gap-1">
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {task.attachmentCount}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
+
 
 export default TaskCard;

@@ -256,3 +256,28 @@ const sendVerificationEmail = async (user, verificationToken) => {
 
 // Export the function if needed
 exports.sendVerificationEmail = sendVerificationEmail;
+
+// Google Auth
+const { googleAuth, getGoogleAuthUrl, clearProcessedCodes } = require('./auth/googleAuth');
+exports.googleAuth = googleAuth;
+exports.getGoogleAuthUrl = getGoogleAuthUrl;
+exports.clearProcessedCodes = clearProcessedCodes;
+
+// Facebook Auth
+const { facebookAuth, getFacebookAuthUrl, verifyFacebookToken, exchangeFacebookCode } = require('./auth/facebookAuth');
+exports.facebookAuth = facebookAuth;
+exports.getFacebookAuthUrl = getFacebookAuthUrl;
+exports.verifyFacebookToken = verifyFacebookToken;
+exports.exchangeFacebookCode = exchangeFacebookCode;
+
+// GitHub Auth
+const { githubAuth, getGitHubAuthUrl, getGitHubUrl } = require('./auth/githubAuth');
+exports.githubAuth = githubAuth;
+exports.getGitHubAuthUrl = getGitHubAuthUrl;
+exports.getGitHubUrl = getGitHubUrl;
+
+// LinkedIn OAuth
+const { linkedinAuth, getLinkedInAuthUrl, getLinkedInUrl } = require('./auth/linkedinAuth');
+exports.linkedinAuth = linkedinAuth;
+exports.getLinkedInAuthUrl = getLinkedInAuthUrl;
+exports.getLinkedInUrl = getLinkedInUrl;

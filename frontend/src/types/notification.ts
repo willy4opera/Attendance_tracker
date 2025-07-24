@@ -1,7 +1,7 @@
 export interface Notification {
   id: string;
   userId: number;
-  type: 'info' | 'success' | 'warning' | 'error' | 'reminder' | 'announcement';
+  type: 'info' | 'success' | 'warning' | 'error' | 'reminder' | 'announcement' | 'dependency' | 'task_assignment';
   title: string;
   message: string;
   data: {

@@ -161,6 +161,41 @@ const Attendance = sequelize.define('Attendance', {
         };
         attendance.markedVia = methodMap[attendance.verificationMethod] || 'manual';
       }
+    },
+    afterCreate: async (attendance) => {
+      // Update session totalAttendance count
+      const { Session } = require('./index');
+      const session = await Session.findByPk(attendance.sessionId);
+      if (session) {
+        const count = await attendance.constructor.count({
+          where: { sessionId: attendance.sessionId, status: ['present', 'late'] }
+        });
+        await session.update({ totalAttendance: count });
+      }
+    },
+    afterUpdate: async (attendance) => {
+      // Update session totalAttendance count if status changed
+      if (attendance.changed('status')) {
+        const { Session } = require('./index');
+        const session = await Session.findByPk(attendance.sessionId);
+        if (session) {
+          const count = await attendance.constructor.count({
+            where: { sessionId: attendance.sessionId, status: ['present', 'late'] }
+          });
+          await session.update({ totalAttendance: count });
+        }
+      }
+    },
+    afterDestroy: async (attendance) => {
+      // Update session totalAttendance count
+      const { Session } = require('./index');
+      const session = await Session.findByPk(attendance.sessionId);
+      if (session) {
+        const count = await attendance.constructor.count({
+          where: { sessionId: attendance.sessionId, status: ['present', 'late'] }
+        });
+        await session.update({ totalAttendance: count });
+      }
     }
   },
   indexes: [

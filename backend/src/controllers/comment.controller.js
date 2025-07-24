@@ -111,6 +111,17 @@ class CommentController {
 
       logger.info(`Comment created on task ${taskId} by user ${req.user.id} with ${attachments.length} attachments`);
 
+      // Emit socket event for real-time update
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`task:${taskId}`).emit('comment_added', {
+          taskId,
+          comment: fullComment,
+          userId: req.user.id
+        });
+        console.log('Emitted comment_added event for task:', taskId);
+      }
+
       res.status(201).json({
         success: true,
         message: 'Comment created successfully',
@@ -371,6 +382,20 @@ class CommentController {
       comment.reactionSummary = reactionSummary;
       await comment.save();
 
+      // Emit socket event for real-time update
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`task:${comment.taskId}`).emit('comment_liked', {
+          commentId: id,
+          taskId: comment.taskId,
+          userId: req.user.id,
+          liked,
+          likeCount: comment.likeCount,
+          reactionSummary
+        });
+        console.log('Emitted comment_liked event for task:', comment.taskId);
+      }
+
       res.status(200).json({
         success: true,
         data: {
@@ -413,7 +438,7 @@ class CommentController {
 
   // Generate shareable link
   generateShareableLink(commentId, taskId) {
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     return `${baseUrl}/tasks/${taskId}?comment=${commentId}`;
   }
 }

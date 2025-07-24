@@ -21,7 +21,7 @@ const User = sequelize.define('User', {
   },
   password: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
     validate: {
       len: {
         args: [6, 100],
@@ -73,6 +73,35 @@ const User = sequelize.define('User', {
   profilePicture: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  provider: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: 'local'
+  },
+  googleId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+    field: 'google_id'
+  },
+  facebookId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+    field: 'facebook_id'
+  },
+  githubId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+    field: 'github_id'
+  },
+  linkedinId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+    field: 'linkedin_id'
   },
   lastLogin: {
     type: DataTypes.DATE,

@@ -1,105 +1,144 @@
 import React from 'react'
-import type { ProjectStats as ProjectStatsType } from '../../types'
 import { 
+  ChartBarIcon, 
   CheckCircleIcon, 
-  DocumentTextIcon, 
-  ClipboardDocumentIcon, 
   ClockIcon,
-  UserGroupIcon,
-  ChartPieIcon
+  UsersIcon,
+  FolderIcon,
+  CalendarDaysIcon
 } from '@heroicons/react/24/outline'
+import theme from '../../config/theme'
 
 interface ProjectStatsProps {
-  stats: ProjectStatsType
+  stats: {
+    boardCount: number
+    totalTasks: number
+    completedTasks: number
+    inProgressTasks: number
+    progress: number
+    activeMemberCount: number
+  }
 }
 
-export const ProjectStats: React.FC<ProjectStatsProps> = ({ stats }) => {
-  const progressPercentage = stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks) * 100 : 0
-
+export default function ProjectStats({ stats }: ProjectStatsProps) {
   return (
-    <div className="bg-white shadow-sm rounded-lg p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-6">Project Statistics</h3>
-      
-      {/* Progress Bar */}
-      <div className="mb-6">
-        <div className="flex justify-between text-sm text-gray-600 mb-2">
-          <span>Progress</span>
-          <span>{Math.round(progressPercentage)}%</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
-            className="style={{ backgroundColor: theme.colors.primary }} h-2 rounded-full transition-all duration-300"
-            style={{ width: `${progressPercentage}%` }}
-          />
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* Total Tasks */}
+      <div className="bg-white rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow"
+           style={{ backgroundColor: theme.colors.background.paper }}>
+        <div className="flex flex-col items-center">
+          <div className="p-2 rounded-lg mb-2" style={{ backgroundColor: theme.colors.primary + '20' }}>
+            <ChartBarIcon className="h-6 w-6" style={{ color: theme.colors.primary }} />
+          </div>
+          <p className="text-2xl font-bold" style={{ color: theme.colors.text.primary }}>
+            {stats.totalTasks}
+          </p>
+          <p className="text-sm" style={{ color: theme.colors.text.secondary }}>
+            Total Tasks
+          </p>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Total Tasks */}
-        <div className="bg-gray-50 rounded-lg p-4">
-          <div className="flex items-center">
-            <ClipboardDocumentIcon className="h-8 w-8 text-blue-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">Total Tasks</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalTasks}</p>
-            </div>
+      {/* Completed Tasks */}
+      <div className="bg-white rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow"
+           style={{ backgroundColor: theme.colors.background.paper }}>
+        <div className="flex flex-col items-center">
+          <div className="p-2 rounded-lg mb-2" style={{ backgroundColor: theme.colors.success + '20' }}>
+            <CheckCircleIcon className="h-6 w-6" style={{ color: theme.colors.success }} />
           </div>
-        </div>
-
-        {/* Completed Tasks */}
-        <div className="bg-green-50 rounded-lg p-4">
-          <div className="flex items-center">
-            <CheckCircleIcon className="h-8 w-8 text-green-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">Completed</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.completedTasks}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* In Progress */}
-        <div className="bg-yellow-50 rounded-lg p-4">
-          <div className="flex items-center">
-            <DocumentTextIcon className="h-8 w-8 text-yellow-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">In Progress</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.inProgressTasks}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Overdue */}
-        <div className="bg-red-50 rounded-lg p-4">
-          <div className="flex items-center">
-            <ClockIcon className="h-8 w-8 text-red-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">Overdue</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.overdueTasks}</p>
-            </div>
-          </div>
+          <p className="text-2xl font-bold" style={{ color: theme.colors.success }}>
+            {stats.completedTasks}
+          </p>
+          <p className="text-sm" style={{ color: theme.colors.text.secondary }}>
+            Completed
+          </p>
         </div>
       </div>
 
-      {/* Additional Stats */}
-      <div className="mt-6 grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-        <div className="flex items-center">
-          <UserGroupIcon className="h-5 w-5 text-gray-400 mr-2" />
-          <div>
-            <p className="text-sm text-gray-500">Team Members</p>
-            <p className="text-lg font-semibold text-gray-900">{stats.memberCount}</p>
+      {/* In Progress Tasks */}
+      <div className="bg-white rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow"
+           style={{ backgroundColor: theme.colors.background.paper }}>
+        <div className="flex flex-col items-center">
+          <div className="p-2 rounded-lg mb-2" style={{ backgroundColor: theme.colors.warning + '20' }}>
+            <ClockIcon className="h-6 w-6" style={{ color: theme.colors.warning }} />
           </div>
+          <p className="text-2xl font-bold" style={{ color: theme.colors.warning }}>
+            {stats.inProgressTasks}
+          </p>
+          <p className="text-sm" style={{ color: theme.colors.text.secondary }}>
+            In Progress
+          </p>
         </div>
-        <div className="flex items-center">
-          <ChartPieIcon className="h-5 w-5 text-gray-400 mr-2" />
-          <div>
-            <p className="text-sm text-gray-500">Boards</p>
-            <p className="text-lg font-semibold text-gray-900">{stats.boardCount}</p>
+      </div>
+
+      {/* Completion Rate */}
+      <div className="bg-white rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow"
+           style={{ backgroundColor: theme.colors.background.paper }}>
+        <div className="flex flex-col items-center">
+          <div className="relative">
+            <svg className="w-12 h-12 transform -rotate-90">
+              <circle
+                cx="24"
+                cy="24"
+                r="20"
+                stroke={theme.colors.primary + '30'}
+                strokeWidth="4"
+                fill="none"
+              />
+              <circle
+                cx="24"
+                cy="24"
+                r="20"
+                stroke={theme.colors.primary}
+                strokeWidth="4"
+                fill="none"
+                strokeDasharray={`${(stats.progress / 100) * 126} 126`}
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-sm font-bold" style={{ color: theme.colors.text.primary }}>
+                {stats.progress}%
+              </span>
+            </div>
           </div>
+          <p className="text-sm mt-2" style={{ color: theme.colors.text.secondary }}>
+            Progress
+          </p>
+        </div>
+      </div>
+
+      {/* Boards */}
+      <div className="bg-white rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow"
+           style={{ backgroundColor: theme.colors.background.paper }}>
+        <div className="flex flex-col items-center">
+          <div className="p-2 rounded-lg mb-2" style={{ backgroundColor: theme.colors.info + '20' }}>
+            <FolderIcon className="h-6 w-6" style={{ color: theme.colors.info }} />
+          </div>
+          <p className="text-2xl font-bold" style={{ color: theme.colors.text.primary }}>
+            {stats.boardCount}
+          </p>
+          <p className="text-sm" style={{ color: theme.colors.text.secondary }}>
+            Boards
+          </p>
+        </div>
+      </div>
+
+      {/* Team Members */}
+      <div className="bg-white rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow"
+           style={{ backgroundColor: theme.colors.background.paper }}>
+        <div className="flex flex-col items-center">
+          <div className="p-2 rounded-lg mb-2" style={{ backgroundColor: theme.colors.secondary + '20' }}>
+            <UsersIcon className="h-6 w-6" style={{ color: theme.colors.secondary }} />
+          </div>
+          <p className="text-2xl font-bold" style={{ color: theme.colors.text.primary }}>
+            {stats.activeMemberCount}
+          </p>
+          <p className="text-sm" style={{ color: theme.colors.text.secondary }}>
+            Members
+          </p>
         </div>
       </div>
     </div>
   )
 }
-
-export default ProjectStats

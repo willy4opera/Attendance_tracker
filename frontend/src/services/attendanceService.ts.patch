@@ -1,0 +1,15 @@
+  // Update the getSessionAttendance method to accept options
+  async getSessionAttendance(sessionId: string, options?: { skipCache?: boolean }): Promise<Attendance[]> {
+    try {
+      console.log('🔍 DEBUG - Getting session attendance for sessionId:', sessionId);
+      const response = await api.get(`/attendance/sessions/${sessionId}/attendance`, { 
+        skipCache: options?.skipCache || false 
+      });
+      console.log('🔍 DEBUG - Session attendance response:', response.data);
+      return response.data.data.attendances || response.data.data || [];
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message: string }>;
+      console.error('❌ DEBUG - Failed to get session attendance:', error);
+      throw new Error(axiosError.response?.data?.message || 'Failed to fetch session attendance');
+    }
+  }

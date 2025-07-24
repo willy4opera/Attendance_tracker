@@ -87,7 +87,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
           disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:bg-gray-50'
         }`}
         style={{ 
-          '--tw-ring-color': theme.colors.primary,
+          borderColor: theme.colors.primary + '40',
           focusRingColor: theme.colors.primary 
         } as any}
       >
@@ -125,7 +125,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                 placeholder="Search users..."
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent text-sm"
                 style={{ 
-                  '--tw-ring-color': theme.colors.primary,
+                  borderColor: theme.colors.primary + '40',
                   focusRingColor: theme.colors.primary 
                 } as any}
               />

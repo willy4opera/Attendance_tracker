@@ -21,6 +21,11 @@ router.post('/', sessionController.createSession);
 router.patch('/:sessionId', sessionController.updateSession);
 router.delete('/:sessionId', sessionController.deleteSession);
 
+// Session attendance and files management
+router.patch('/:sessionId/attendance-count', sessionController.updateSessionAttendanceCount);
+router.post('/:sessionId/files', sessionController.addFilesToSession);
+router.delete('/:sessionId/files/:fileId', sessionController.removeFileFromSession);
+
 module.exports = router;
 
 // Recurring session routes

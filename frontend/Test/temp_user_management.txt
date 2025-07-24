@@ -1,0 +1,150 @@
+import React, { useState, useEffect, useCallback } from 'react'
+import { 
+  AiOutlineUserAdd, 
+  AiOutlineSearch, 
+  AiOutlineEdit, 
+  AiOutlineDelete,
+  AiOutlineDownload,
+  AiOutlineFilter,
+  AiOutlineMail,
+  AiOutlinePhone,
+  AiOutlineCheckCircle,
+  AiOutlineCloseCircle,
+  AiOutlineEye,
+  AiOutlineMenu,
+  AiOutlineClose
+} from 'react-icons/ai'
+import { FaUserShield, FaUserCog, FaUser } from 'react-icons/fa'
+import { MdVerified } from 'react-icons/md'
+import api from '../../services/api'
+import departmentService from "../../services/departmentService"
+import type { Department } from "../../types"
+import { useAuth } from '../../contexts/useAuth'
+import notify from '../../utils/notifications'
+import theme from '../../config/theme'
+import CreateUserModal from './CreateUserModal'
+import EditUserModal from './EditUserModal'
+import UserDetailsModal from './UserDetailsModal'
+
+interface User {
+  id: number
+  email: string
+  firstName: string
+  lastName: string
+  phoneNumber?: string
+  role: 'admin' | 'moderator' | 'user'
+  department?: {
+    id: number
+    name: string
+    code: string
+  }
+  isActive: boolean
+  isEmailVerified: boolean
+  lastLogin?: string
+  createdAt: string
+  stats?: {
+    projectCount: number
+    attendanceRate: number
+  }
+}
+
+interface UserFilters {
+  search: string
+  role: string
+  departmentId: string
+  isActive: string
+  isEmailVerified: string
+}
+
+export default function UserManagement() {
+  const { user: currentUser } = useAuth()
+  const [users, setUsers] = useState<User[]>([])
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [loading, setLoading] = useState(true)
+  const [departmentsLoading, setDepartmentsLoading] = useState(true)
+  const [totalUsers, setTotalUsers] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([])
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
+  
+  const [filters, setFilters] = useState<UserFilters>({
+    search: '',
+    role: 'all',
+    departmentId: '',
+    isActive: '',
+    isEmailVerified: ''
+  })
+
+  // Check if mobile
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    checkIsMobile()
+    window.addEventListener('resize', checkIsMobile)
+    return () => window.removeEventListener('resize', checkIsMobile)
+  }, [])
+
+  // Fetch departments
+  const fetchDepartments = useCallback(async () => {
+    try {
+      setDepartmentsLoading(true)
+      const response = await departmentService.getAllDepartments({
+        isActive: true,
+        limit: 1000 // Get all departments
+      })
+      setDepartments(response.departments)
+    } catch (error) {
+      notify.toast.error('Failed to fetch departments')
+      console.error('Error fetching departments:', error)
+    } finally {
+      setDepartmentsLoading(false)
+    }
+  }, [])
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: '10',
+        includeStats: 'true',
+        sortBy: 'createdAt',
+        sortOrder: 'DESC'
+      })
+
+      // Add filters
+      if (filters.search) params.append('search', filters.search)
+      if (filters.role && filters.role !== 'all') params.append('role', filters.role)
+      if (filters.departmentId) params.append('departmentId', filters.departmentId)
+      if (filters.isActive) params.append('isActive', filters.isActive)
+      if (filters.isEmailVerified) params.append('isEmailVerified', filters.isEmailVerified)
+
+      const response = await api.get(`/users?${params}`)
+      setUsers(response.data.data.users)
+      setTotalUsers(response.data.data.total)
+      setTotalPages(response.data.data.totalPages)
+    } catch (error) {
+      notify.toast.error('Failed to fetch users')
+      console.error('Error fetching users:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [currentPage, filters])
+
+  useEffect(() => {
+    fetchDepartments()
+  }, [fetchDepartments])
+
+  useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
+

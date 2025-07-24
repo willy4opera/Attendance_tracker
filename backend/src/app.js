@@ -23,16 +23,24 @@ app.set('trust proxy', 1);
 app.use(helmet());
 
 // Rate limiting
+const isDevelopment = process.env.NODE_ENV === 'development';
 const limiter = rateLimit({
-  max: 100,
-  windowMs: 60 * 60 * 1000, // 1 hour
-  message: 'Too many requests from this IP, please try again in an hour!'
+  max: isDevelopment ? 1000 : 100,
+  windowMs: isDevelopment ? 1 * 60 * 1000 : 15 * 60 * 1000,
+  message: 'Too many requests from this IP, please try again later!',
+  skip: (req) => {
+    // Skip rate limiting for certain routes in development
+    if (isDevelopment && (req.path.includes('/users/me') || req.path.includes('/auth/refresh'))) {
+      return true;
+    }
+    return false;
+  }
 });
 app.use('/api', limiter);
 
 // Body parser, reading data from body into req.body
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // Data sanitization against NoSQL query injection

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Assignment Notification</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px;">
+          <!-- Header -->
+          <tr>
+            <td style="background-color: {{primaryColor}}; color: {{secondaryColor}}; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-size: 24px;">{{title}}</h1>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 30px;">
+              <p style="color: #333333; font-size: 16px; margin: 0 0 20px 0;">Hi {{recipientName}},</p>
+              
+              <p style="color: #333333; font-size: 16px; margin: 0 0 20px 0;">{{message}}</p>
+              
+              <!-- Task Details -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 20px 0;">
+                <tr>
+                  <td style="background-color: #f8f9fa; padding: 20px; border-left: 4px solid {{primaryColor}};">
+                    <h2 style="margin: 0 0 15px 0; color: {{primaryColor}}; font-size: 20px;">{{taskTitle}}</h2>
+                    {{#if taskDescription}}
+                    <p style="margin: 0 0 15px 0; color: #666666; font-size: 14px;">{{taskDescription}}</p>
+                    {{/if}}
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td width="120" style="color: #666666; font-size: 14px; padding: 5px 0;">Project:</td>
+                        <td style="color: #333333; font-size: 14px; padding: 5px 0;">{{projectName}}</td>
+                      </tr>
+                      <tr>
+                        <td width="120" style="color: #666666; font-size: 14px; padding: 5px 0;">Board:</td>
+                        <td style="color: #333333; font-size: 14px; padding: 5px 0;">{{boardName}}</td>
+                      </tr>
+                      <tr>
+                        <td width="120" style="color: #666666; font-size: 14px; padding: 5px 0;">Created by:</td>
+                        <td style="color: #333333; font-size: 14px; padding: 5px 0;">{{creatorName}}</td>
+                      </tr>
+                      {{#if dueDate}}
+                      <tr>
+                        <td width="120" style="color: #666666; font-size: 14px; padding: 5px 0;">Due Date:</td>
+                        <td style="color: #333333; font-size: 14px; padding: 5px 0;">{{formatDate dueDate}}</td>
+                      </tr>
+                      {{/if}}
+                      <tr>
+                        <td width="120" style="color: #666666; font-size: 14px; padding: 5px 0;">Priority:</td>
+                        <td style="color: #333333; font-size: 14px; padding: 5px 0;">
+                          <span style="display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; text-transform: uppercase; 
+                            {{#eq priority 'low'}}background-color: #e3f2fd; color: #1976d2;{{/eq}}
+                            {{#eq priority 'medium'}}background-color: #fff3e0; color: #f57c00;{{/eq}}
+                            {{#eq priority 'high'}}background-color: #ffeaa7; color: #d63031;{{/eq}}
+                            {{#eq priority 'urgent'}}background-color: #ffebee; color: #c62828;{{/eq}}">
+                            {{priority}}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Call to Action -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 20px 0;">
+                <tr>
+                  <td align="center" style="padding: 20px 0;">
+                    <a href="{{taskUrl}}" style="display: inline-block; background-color: {{primaryColor}}; color: {{secondaryColor}}; padding: 12px 30px; text-decoration: none; border-radius: 4px; font-weight: bold;">View Task</a>
+                  </td>
+                </tr>
+              </table>
+              
+              <p style="color: #666666; font-size: 14px; margin: 0;">You're receiving this email because you've been assigned to this task. If you have any questions, please contact the task creator or your project manager.</p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 8px 8px;">
+              <p style="margin: 0 0 10px 0; color: #666666; font-size: 14px;">© {{year}} Your Company. All rights reserved.</p>
+              <p style="margin: 0; color: #666666; font-size: 14px;">
+                <a href="{{unsubscribeUrl}}" style="color: {{linkColor}}; text-decoration: none;">Manage notification preferences</a> | 
+                <a href="{{helpUrl}}" style="color: {{linkColor}}; text-decoration: none;">Get help</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

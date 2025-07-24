@@ -1,0 +1,404 @@
+import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useProject } from '../../hooks/useProjects'
+import { useBoards } from '../../hooks/useBoards'
+import { useProjectStatistics } from '../../hooks/useProjectStatistics'
+import { ProjectMembers } from '../../components/projects/ProjectMembers'
+import ProjectStats from '../../components/projects/ProjectStats'
+import { ProjectTimeline } from '../../components/projects/ProjectTimeline'
+import ProjectBoardsOverview from '../../components/projects/ProjectBoardsOverview'
+import { BoardCard } from '../../components/boards/BoardCard'
+import { 
+  PencilIcon, 
+  TrashIcon, 
+  FolderIcon,
+  ClipboardDocumentListIcon,
+  ChartBarIcon,
+  UsersIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  ArrowLeftIcon
+} from '@heroicons/react/24/outline'
+import theme from '../../config/theme'
+
+export default function ProjectDetails() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const { project, loading: projectLoading, deleteProject } = useProject(parseInt(id || '0'))
+  const { boards, loading: boardsLoading } = useBoards({ projectId: parseInt(id || '0') })
+  const { statistics, loading: statsLoading } = useProjectStatistics()
+  
+  const [activeTab, setActiveTab] = useState<'overview' | 'boards' | 'activity'>('overview')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  // Get statistics for this specific project
+  const projectStats = statistics?.projects.find(stat => stat.projectId === parseInt(id || '0'))
+  const stats = projectStats ? {
+    boardCount: projectStats.boardCount,
+    totalTasks: projectStats.totalTasks,
+    completedTasks: projectStats.completedTasks,
+    inProgressTasks: projectStats.inProgressTasks,
+    progress: projectStats.completionRate,
+    activeMemberCount: project?.members?.length || 0
+  } : {
+    boardCount: boards.length,
+    totalTasks: 0,
+    completedTasks: 0,
+    inProgressTasks: 0,
+    progress: 0,
+    activeMemberCount: project?.members?.length || 0
+  }
+
+  const loading = projectLoading || boardsLoading || statsLoading
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2" 
+             style={{ borderColor: theme.colors.secondary }}></div>
+      </div>
+    )
+  }
+
+  if (!project) {
+    return (
+      <div className="text-center py-12">
+        <p style={{ color: theme.colors.text.secondary }}>Project not found</p>
+        <Link 
+          to="/projects" 
+          className="mt-4 inline-flex items-center text-sm"
+          style={{ color: theme.colors.secondary }}
+        >
+          <ArrowLeftIcon className="h-4 w-4 mr-2" />
+          Back to Projects
+        </Link>
+      </div>
+    )
+  }
+
+  const getStatusColor = () => {
+    switch (project.status) {
+      case 'active':
+        return { bg: theme.colors.success + '20', text: theme.colors.success }
+      case 'completed':
+        return { bg: theme.colors.info + '20', text: theme.colors.info }
+      case 'on_hold':
+        return { bg: theme.colors.warning + '20', text: theme.colors.warning }
+      case 'cancelled':
+        return { bg: theme.colors.error + '20', text: theme.colors.error }
+      default:
+        return { bg: theme.colors.secondary + '20', text: theme.colors.secondary }
+    }
+  }
+
+  const statusColors = getStatusColor()
+
+  const handleDelete = async () => {
+    await deleteProject(project.id)
+    navigate('/projects')
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-white rounded-lg shadow-sm p-6" 
+           style={{ backgroundColor: theme.colors.background.paper }}>
+        <div className="flex items-start justify-between">
+          <div className="flex items-start space-x-4">
+            <Link 
+              to="/projects"
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              style={{ color: theme.colors.secondary }}
+            >
+              <ArrowLeftIcon className="h-5 w-5" />
+            </Link>
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-2xl font-bold" style={{ color: theme.colors.text.primary }}>
+                  {project.name}
+                </h1>
+                <span 
+                  className="px-3 py-1 rounded-full text-sm font-medium"
+                  style={{ backgroundColor: statusColors.bg, color: statusColors.text }}
+                >
+                  {project.status.replace('_', ' ')}
+                </span>
+              </div>
+              <p className="text-sm" style={{ color: theme.colors.text.secondary }}>
+                {project.description || 'No description available'}
+              </p>
+              <div className="flex items-center gap-4 mt-3 text-sm" style={{ color: theme.colors.text.secondary }}>
+                <span>Code: <strong style={{ color: theme.colors.secondary }}>{project.code}</strong></span>
+                {project.department && (
+                  <span>Department: <strong style={{ color: theme.colors.secondary }}>{project.department.name}</strong></span>
+                )}
+                {project.startDate && (
+                  <span className="flex items-center gap-1">
+                    <CalendarIcon className="h-4 w-4" />
+                    {new Date(project.startDate).toLocaleDateString()} - {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Ongoing'}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              to={`/projects/${project.id}/edit`}
+              className="px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-200"
+              style={{
+                backgroundColor: theme.colors.secondary,
+                color: '#ffffff'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.8'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1'
+              }}
+            >
+              <PencilIcon className="h-4 w-4" />
+              Edit
+            </Link>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-200"
+              style={{
+                backgroundColor: theme.colors.error,
+                color: '#ffffff'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.8'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1'
+              }}
+            >
+              <TrashIcon className="h-4 w-4" />
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistics Overview */}
+      <ProjectStats stats={stats} />
+
+      {/* Quick Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg p-6 shadow-sm" 
+             style={{ backgroundColor: theme.colors.background.paper }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm" style={{ color: theme.colors.text.secondary }}>
+                Completion Rate
+              </p>
+              <p className="text-3xl font-bold mt-1" style={{ color: theme.colors.secondary }}>
+                {stats.progress}%
+              </p>
+            </div>
+            <div className="relative">
+              <svg className="w-16 h-16 transform -rotate-90">
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="28"
+                  stroke={theme.colors.secondary + '20'}
+                  strokeWidth="8"
+                  fill="none"
+                />
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="28"
+                  stroke={theme.colors.secondary}
+                  strokeWidth="8"
+                  fill="none"
+                  strokeDasharray={`${(stats.progress / 100) * 176} 176`}
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg p-6 shadow-sm" 
+             style={{ backgroundColor: theme.colors.background.paper }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm" style={{ color: theme.colors.text.secondary }}>
+                Active Tasks
+              </p>
+              <p className="text-3xl font-bold mt-1" style={{ color: theme.colors.warning }}>
+                {stats.totalTasks - stats.completedTasks}
+              </p>
+            </div>
+            <ClockIcon className="h-12 w-12" style={{ color: theme.colors.warning + '40' }} />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg p-6 shadow-sm" 
+             style={{ backgroundColor: theme.colors.background.paper }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm" style={{ color: theme.colors.text.secondary }}>
+                Team Size
+              </p>
+              <p className="text-3xl font-bold mt-1" style={{ color: theme.colors.secondary }}>
+                {stats.activeMemberCount}
+              </p>
+            </div>
+            <UsersIcon className="h-12 w-12" style={{ color: theme.colors.secondary + '40' }} />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg p-6 shadow-sm" 
+             style={{ backgroundColor: theme.colors.background.paper }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm" style={{ color: theme.colors.text.secondary }}>
+                Productivity
+              </p>
+              <p className="text-3xl font-bold mt-1" style={{ color: theme.colors.success }}>
+                {stats.completedTasks > 0 ? Math.round(stats.completedTasks / stats.activeMemberCount) : 0}
+              </p>
+              <p className="text-xs" style={{ color: theme.colors.text.secondary }}>
+                tasks/member
+              </p>
+            </div>
+            <ChartBarIcon className="h-12 w-12" style={{ color: theme.colors.success + '40' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white rounded-lg shadow-sm" style={{ backgroundColor: theme.colors.background.paper }}>
+        <div className="border-b" style={{ borderColor: theme.colors.secondary + '20' }}>
+          <div className="flex space-x-8 px-6">
+            {['overview', 'boards', 'activity'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab as any)}
+                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === tab ? 'border-current' : 'border-transparent'
+                }`}
+                style={{
+                  color: activeTab === tab ? theme.colors.secondary : theme.colors.text.secondary,
+                  borderColor: activeTab === tab ? theme.colors.secondary : 'transparent'
+                }}
+              >
+                {tab === 'overview' && <ClipboardDocumentListIcon className="h-5 w-5 inline mr-2" />}
+                {tab === 'boards' && <FolderIcon className="h-5 w-5 inline mr-2" />}
+                {tab === 'activity' && <ChartBarIcon className="h-5 w-5 inline mr-2" />}
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-6">
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              <ProjectMembers 
+                projectId={project.id} 
+                members={project.members || []} 
+                projectManagerId={project.projectManagerId}
+              />
+              <ProjectTimeline 
+                startDate={project.startDate}
+                endDate={project.endDate}
+                tasks={[]} // You can pass actual tasks here
+              />
+            </div>
+          )}
+
+          {activeTab === 'boards' && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold" style={{ color: theme.colors.text.primary }}>
+                  Project Boards ({boards.length})
+                </h3>
+                <Link
+                  to={`/boards/create?projectId=${project.id}`}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+                  style={{
+                    backgroundColor: theme.colors.secondary,
+                    color: '#ffffff'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.8'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1'
+                  }}
+                >
+                  Create Board
+                </Link>
+              </div>
+              
+              {boards.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <FolderIcon className="mx-auto h-12 w-12" style={{ color: theme.colors.text.secondary }} />
+                  <p className="mt-2" style={{ color: theme.colors.text.secondary }}>
+                    No boards yet. Create your first board to get started.
+                  </p>
+                </div>
+              ) : (
+                <ProjectBoardsOverview boards={boards} />
+              )}
+            </div>
+          )}
+
+          {activeTab === 'activity' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold mb-4" style={{ color: theme.colors.text.primary }}>
+                Recent Activity
+              </h3>
+              <div className="text-center py-12" style={{ color: theme.colors.text.secondary }}>
+                Activity timeline coming soon...
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full"
+               style={{ backgroundColor: theme.colors.background.paper }}>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: theme.colors.text.primary }}>
+              Delete Project
+            </h3>
+            <p className="mb-6" style={{ color: theme.colors.text.secondary }}>
+              Are you sure you want to delete "{project.name}"? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 rounded-lg transition-colors"
+                style={{
+                  backgroundColor: theme.colors.background.default,
+                  color: theme.colors.text.primary
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 rounded-lg transition-colors"
+                style={{
+                  backgroundColor: theme.colors.error,
+                  color: '#ffffff'
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

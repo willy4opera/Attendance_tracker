@@ -40,3 +40,15 @@ router.post('/manual',
 );
 
 module.exports = router;
+
+// Update attendance record (admin/moderator)
+router.put('/:id', 
+  restrictTo('admin', 'moderator'), 
+  attendanceController.updateAttendance
+);
+
+// Delete attendance record (admin only)
+router.delete('/:id', 
+  restrictTo('admin'), 
+  attendanceController.deleteAttendance
+);

@@ -22,18 +22,21 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
     lg: 'h-12 w-12 text-base',
   };
 
-  const initials = `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`;
+  // Safe handling of undefined firstName/lastName
+  const firstName = user.firstName || '';
+  const lastName = user.lastName || '';
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
   return (
     <div className={`${sizeClasses[size]} bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium shadow-sm ${className}`}>
       {user.profilePicture ? (
         <img
           src={user.profilePicture}
-          alt={`${user.firstName} ${user.lastName}`}
+          alt={`${firstName} ${lastName}`}
           className="w-full h-full rounded-full object-cover"
         />
       ) : (
-        <span>{initials}</span>
+        <span>{initials || '?'}</span>
       )}
     </div>
   );

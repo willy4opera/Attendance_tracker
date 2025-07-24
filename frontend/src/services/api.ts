@@ -1,12 +1,20 @@
-import axios, { AxiosError } from 'axios'
-import type { InternalAxiosRequestConfig } from 'axios';
+import axios from 'axios'
+import type { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import config from '../config';
+import { rateLimitedRequest } from '../utils/rateLimiter';
+import { setupApiInterceptors } from './api-interceptors';
+import { cachedRequest } from '../utils/apiCache';
+import { requestDeduplicator } from '../utils/requestDeduplicator';
+import { API_OPTIMIZATION_CONFIG, getCacheDuration, shouldCacheEndpoint } from '../config/apiOptimization';
 
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
+  skipCache?: boolean;
+  skipDeduplication?: boolean;
 }
 
-const api = axios.create({
+// Create the base axios instance
+const axiosInstance = axios.create({
   baseURL: config.api.baseUrl,
   headers: {
     'Content-Type': 'application/json',
@@ -14,12 +22,15 @@ const api = axios.create({
   timeout: 30000,
 });
 
+// Setup API interceptors for monitoring and optimization
+setupApiInterceptors(axiosInstance);
+
 // Token management
 let accessToken: string | null = localStorage.getItem('accessToken');
 let refreshToken: string | null = localStorage.getItem('refreshToken');
 
 // Request interceptor
-api.interceptors.request.use(
+axiosInstance.interceptors.request.use(
   (config) => {
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
@@ -34,7 +45,7 @@ api.interceptors.request.use(
 );
 
 // Response interceptor
-api.interceptors.response.use(
+axiosInstance.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as CustomAxiosRequestConfig;
@@ -59,7 +70,7 @@ api.interceptors.response.use(
           
           // Update the authorization header
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
+          return axiosInstance(originalRequest);
         } catch (refreshError) {
           console.error('Token refresh failed:', refreshError);
           clearTokens();
@@ -72,10 +83,110 @@ api.interceptors.response.use(
       }
     }
     
+    // Don't intercept rate limit errors - let the rate limiter handle them
+    if (error.response?.status === 429) {
+      return Promise.reject(error);
+    }
+    
     return Promise.reject(error);
   }
 );
 
+// Create a rate-limited wrapper around axios instance with optimization
+class RateLimitedApi {
+  private extractEndpoint(url: string): string {
+    // Extract the endpoint path for rate limiting purposes
+    try {
+      const urlObj = new URL(url, config.api.baseUrl);
+      return urlObj.pathname;
+    } catch {
+      return url;
+    }
+  }
+
+  private shouldUseCache(method: string, endpoint: string, config?: any): boolean {
+    if (config?.skipCache) return false;
+    return shouldCacheEndpoint(method, endpoint);
+  }
+
+  async get<T = any>(url: string, config?: any): Promise<AxiosResponse<T>> {
+    const endpoint = this.extractEndpoint(url);
+    
+    // Use caching for GET requests if appropriate
+    if (this.shouldUseCache('GET', endpoint, config)) {
+      const cacheKey = `GET:${url}:${JSON.stringify(config?.params || {})}`;
+      const cacheDuration = getCacheDuration(endpoint);
+      
+      return cachedRequest(
+        cacheKey,
+        () => rateLimitedRequest(
+          () => axiosInstance.get<T>(url, config),
+          endpoint,
+          API_OPTIMIZATION_CONFIG.retry.count
+        ),
+        cacheDuration
+      );
+    }
+    
+    return rateLimitedRequest(
+      () => axiosInstance.get<T>(url, config),
+      endpoint,
+      API_OPTIMIZATION_CONFIG.retry.count
+    );
+  }
+
+  async post<T = any>(url: string, data?: any, config?: any): Promise<AxiosResponse<T>> {
+    const endpoint = this.extractEndpoint(url);
+    
+    // Use deduplication for POST requests to prevent duplicate submissions
+    if (!config?.skipDeduplication) {
+      const dedupeKey = `POST:${url}:${JSON.stringify(data || {})}`;
+      return requestDeduplicator.deduplicate(
+        dedupeKey,
+        () => rateLimitedRequest(
+          () => axiosInstance.post<T>(url, data, config),
+          endpoint,
+          API_OPTIMIZATION_CONFIG.retry.count
+        )
+      );
+    }
+    
+    return rateLimitedRequest(
+      () => axiosInstance.post<T>(url, data, config),
+      endpoint,
+      API_OPTIMIZATION_CONFIG.retry.count
+    );
+  }
+
+  async put<T = any>(url: string, data?: any, config?: any): Promise<AxiosResponse<T>> {
+    return rateLimitedRequest(
+      () => axiosInstance.put<T>(url, data, config),
+      this.extractEndpoint(url),
+      API_OPTIMIZATION_CONFIG.retry.count
+    );
+  }
+
+  async patch<T = any>(url: string, data?: any, config?: any): Promise<AxiosResponse<T>> {
+    return rateLimitedRequest(
+      () => axiosInstance.patch<T>(url, data, config),
+      this.extractEndpoint(url),
+      API_OPTIMIZATION_CONFIG.retry.count
+    );
+  }
+
+  async delete<T = any>(url: string, config?: any): Promise<AxiosResponse<T>> {
+    return rateLimitedRequest(
+      () => axiosInstance.delete<T>(url, config),
+      this.extractEndpoint(url),
+      API_OPTIMIZATION_CONFIG.retry.count
+    );
+  }
+}
+
+// Create the rate-limited API instance
+const api = new RateLimitedApi();
+
+// Token management functions
 export const setTokens = (access: string, refresh: string) => {
   accessToken = access;
   refreshToken = refresh;
@@ -93,4 +204,13 @@ export const clearTokens = () => {
 export const getAccessToken = () => accessToken;
 export const getRefreshToken = () => refreshToken;
 
+// Export both the rate-limited API and the raw axios instance (for special cases)
 export default api;
+export { axiosInstance };
+
+export const statisticsAPI = {
+  getReport: async () => {
+    const response = await api.get('/statistics/report');
+    return response.data;
+  }
+};

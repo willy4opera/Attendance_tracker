@@ -1,62 +1,99 @@
-const socketManager = require('../config/socket.config');
 const { Attendance, Session, User } = require('../models');
+const logger = require('../utils/logger');
 
 class AttendanceSocket {
-  constructor() {
-    this.socketManager = socketManager;
+  getIo() {
+    // Get IO instance from app
+    const app = require('../app');
+    return app.get('io');
   }
 
   // Emit real-time attendance update when someone marks attendance
   async emitAttendanceMarked(attendance, session, user) {
-    const attendanceData = {
-      id: attendance.id,
-      sessionId: session.id,
-      sessionTitle: session.title,
-      userId: user.id,
-      userName: `${user.firstName} ${user.lastName}`,
-      status: attendance.status,
-      checkInTime: attendance.checkInTime,
-      markedVia: attendance.markedVia
-    };
+    try {
+      const io = this.getIo();
+      if (!io) {
+        logger.warn('Socket.IO instance not available');
+        return;
+      }
 
-    // Broadcast to session
-    this.socketManager.broadcastAttendanceUpdate(session.id, {
-      type: 'attendance-marked',
-      attendance: attendanceData,
-      timestamp: new Date()
-    });
+      const attendanceData = {
+        id: attendance.id,
+        sessionId: session.id,
+        sessionTitle: session.title,
+        userId: user.id,
+        userName: `${user.firstName} ${user.lastName}`,
+        status: attendance.status,
+        checkInTime: attendance.checkInTime,
+        markedVia: attendance.markedVia
+      };
 
-    // Send notification to user
-    this.socketManager.sendNotification(user.id, {
-      type: 'success',
-      title: 'Attendance Marked',
-      message: `Your attendance for "${session.title}" has been marked successfully.`,
-      sessionId: session.id
-    });
+      // Broadcast to session room
+      io.to(`session:${session.id}`).emit('attendance-update', {
+        type: 'attendance-marked',
+        attendance: attendanceData,
+        timestamp: new Date()
+      });
+
+      // Send notification to user
+      io.to(`user_${user.id}`).emit('notification', {
+        type: 'success',
+        title: 'Attendance Marked',
+        message: `Your attendance for "${session.title}" has been marked successfully.`,
+        sessionId: session.id
+      });
+
+      logger.info(`Attendance marked event emitted for session ${session.id}`);
+    } catch (error) {
+      logger.error('Error emitting attendance marked event:', error);
+    }
   }
 
   // Emit when attendance is updated
   async emitAttendanceUpdated(attendance, session, updatedBy) {
-    const attendanceData = {
-      id: attendance.id,
-      sessionId: session.id,
-      userId: attendance.userId,
-      status: attendance.status,
-      notes: attendance.notes,
-      updatedBy: updatedBy.id,
-      updatedByName: `${updatedBy.firstName} ${updatedBy.lastName}`
-    };
+    try {
+      const io = this.getIo();
+      if (!io) {
+        logger.warn('Socket.IO instance not available');
+        return;
+      }
 
-    this.socketManager.broadcastAttendanceUpdate(session.id, {
-      type: 'attendance-updated',
-      attendance: attendanceData,
-      timestamp: new Date()
-    });
+      const attendanceData = {
+        id: attendance.id,
+        sessionId: session.id,
+        userId: attendance.userId,
+        status: attendance.status,
+        notes: attendance.notes,
+        updatedBy: updatedBy.id,
+        updatedByName: `${updatedBy.firstName} ${updatedBy.lastName}`
+      };
+
+      // Broadcast to session room
+      io.to(`session:${session.id}`).emit('attendance-update', {
+        type: 'attendance-updated',
+        attendance: attendanceData,
+        timestamp: new Date(),
+        user: {
+          id: updatedBy.id,
+          name: `${updatedBy.firstName} ${updatedBy.lastName}`
+        }
+      });
+
+      logger.info(`Attendance updated event emitted for session ${session.id}`);
+    } catch (error) {
+      logger.error('Error emitting attendance updated event:', error);
+    }
   }
 
   // Emit session attendance statistics
   async emitSessionStats(sessionId) {
     try {
+      const io = this.getIo();
+      if (!io) {
+        logger.warn('Socket.IO instance not available');
+        return;
+      }
+
       const session = await Session.findByPk(sessionId);
       const attendanceCount = await Attendance.count({
         where: { sessionId, status: 'present' }
@@ -69,69 +106,10 @@ class AttendanceSocket {
         percentageFilled: session.capacity ? (attendanceCount / session.capacity * 100).toFixed(1) : 0
       };
 
-      this.socketManager.emitToSession(sessionId, 'session-stats-update', stats);
+      io.to(`session:${sessionId}`).emit('session-stats-update', stats);
+      logger.info(`Session stats update emitted for session ${sessionId}`);
     } catch (error) {
-      console.error('Error emitting session stats:', error);
-    }
-  }
-
-  // Emit late arrival notification
-  async emitLateArrival(attendance, session, user, lateMinutes) {
-    const notification = {
-      type: 'late-arrival',
-      attendance: {
-        userId: user.id,
-        userName: `${user.firstName} ${user.lastName}`,
-        lateMinutes
-      },
-      session: {
-        id: session.id,
-        title: session.title
-      }
-    };
-
-    // Notify session facilitator
-    this.socketManager.emitToUser(session.facilitatorId, 'notification', {
-      type: 'warning',
-      title: 'Late Arrival',
-      message: `${user.firstName} ${user.lastName} arrived ${lateMinutes} minutes late to "${session.title}"`,
-      ...notification
-    });
-
-    // Notify admins
-    this.socketManager.emitToRole('admin', 'late-arrival', notification);
-  }
-
-  // Real-time attendance progress for session
-  async emitAttendanceProgress(sessionId) {
-    try {
-      const attendances = await Attendance.findAll({
-        where: { sessionId },
-        include: [{
-          model: User,
-          as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email']
-        }],
-        order: [['checkInTime', 'DESC']],
-        limit: 50
-      });
-
-      const progress = {
-        sessionId,
-        recentAttendances: attendances.map(a => ({
-          id: a.id,
-          userId: a.userId,
-          userName: `${a.user.firstName} ${a.user.lastName}`,
-          checkInTime: a.checkInTime,
-          status: a.status,
-          markedVia: a.markedVia
-        })),
-        total: attendances.length
-      };
-
-      this.socketManager.emitToSession(sessionId, 'attendance-progress', progress);
-    } catch (error) {
-      console.error('Error emitting attendance progress:', error);
+      logger.error('Error emitting session stats:', error);
     }
   }
 }

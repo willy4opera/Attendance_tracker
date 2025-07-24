@@ -1,11 +1,13 @@
+import type { ID } from './common';
+
 // Board types aligned with API guide
 export interface Board {
-  id: number
+  id: ID
   name: string
   description?: string
-  projectId: number | null
-  departmentId: number | null
-  createdBy: number
+  projectId: ID | null
+  departmentId: ID | null
+  createdBy: ID
   backgroundColor: string
   backgroundImage?: string | null
   visibility: 'private' | 'department' | 'organization' | 'public'
@@ -21,23 +23,23 @@ export interface Board {
   createdAt: string
   updatedAt: string
   creator: {
-    id: number
+    id: ID
     firstName: string
     lastName: string
     email: string
   }
   project?: {
-    id: number
+    id: ID
     name: string
     code: string
   } | null
   department?: {
-    id: number
+    id: ID
     name: string
     code: string
   } | null
   members: Array<{
-    id: number
+    id: ID
     firstName: string
     lastName: string
     email: string
@@ -55,9 +57,9 @@ export interface Board {
 }
 
 export interface BoardList {
-  id: number
+  id: ID
   name: string
-  boardId: number
+  boardId: ID
   position: number
   color?: string | null
   isArchived: boolean
@@ -73,15 +75,15 @@ export interface BoardList {
 }
 
 export interface Task {
-  id: number
+  id: ID
   title: string
   description?: string
   taskListId: number
   position: number
-  createdBy: number
+  createdBy: ID
   assignedTo: any[]
   priority: 'low' | 'medium' | 'high' | 'urgent'
-  status: 'todo' | 'in_progress' | 'completed'
+  status: 'todo' | 'in-progress' | 'completed'
   dueDate?: string | null
   startDate?: string | null
   completedAt?: string | null
@@ -105,7 +107,7 @@ export interface Task {
   createdAt: string
   updatedAt: string
   creator: {
-    id: number
+    id: ID
     firstName: string
     lastName: string
     email: string
@@ -113,12 +115,12 @@ export interface Task {
 }
 
 export interface BoardMember {
-  id: number
-  boardId: number
-  userId: number
+  id: ID
+  boardId: ID
+  userId: ID
   role: BoardRole
   user: {
-    id: number
+    id: ID
     firstName: string
     lastName: string
     email: string
@@ -204,11 +206,11 @@ export enum BoardRole {
 }
 
 export interface TaskAssignee {
-  id: number
-  userId: number
-  taskId: number
+  id: ID
+  userId: ID
+  taskId: ID
   user: {
-    id: number
+    id: ID
     firstName: string
     lastName: string
     email: string
@@ -216,14 +218,14 @@ export interface TaskAssignee {
 }
 
 export interface TaskLabel {
-  id: number
+  id: ID
   name: string
   color: string
 }
 
 // User interface for references
 export interface User {
-  id: number
+  id: ID
   firstName: string
   lastName: string
   email: string

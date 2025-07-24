@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNotificationContext } from '../contexts/NotificationProvider';
 import notificationService from '../services/notificationService';
 import type { Notification, NotificationFilters } from '../types/notification';
 import { useAuth } from '../contexts/useAuth';
@@ -63,16 +64,19 @@ export const useNotifications = (options: UseNotificationsOptions = {}) => {
 };
 
 export const useUnreadCount = (enablePolling = false) => {
-  const { user } = useAuth();
+  const { unreadCount } = useNotificationContext();
   
-  return useQuery({
-    queryKey: ['unread-count', user?.id],
-    queryFn: () => notificationService.getUnreadCount(user!.id),
-    enabled: !!user?.id,
-    // Only poll if explicitly enabled, and with much longer interval
-    refetchInterval: enablePolling ? 5 * 60 * 1000 : false, // 5 minutes if enabled
-    staleTime: 2 * 60 * 1000, // 2 minutes - count is fresh for 2 minutes
-  });
+  // Return a structure similar to what components expect
+  return {
+    data: {
+      data: {
+        count: unreadCount,
+        unreadCount: unreadCount
+      }
+    },
+    isLoading: false,
+    error: null
+  };
 };
 
 export const useNotificationSettings = () => {

@@ -1,150 +1,318 @@
-import api from './api'
-import type {
-  Task,
-  TasksResponse,
-  CreateTaskDto,
-  UpdateTaskDto,
-  TaskWithStats,
-  MoveTaskDto,
-  TaskComment,
-  CreateTaskCommentDto,
-  UpdateTaskCommentDto,
-  TaskChecklistItem,
-  CreateTaskChecklistItemDto,
-  UpdateTaskChecklistItemDto,
-  TaskAttachment,
-  TaskLabel
-} from '../types'
+import api from './api';
+import type { Task, CreateTaskDto, UpdateTaskDto } from '../types/task';
 
-// Updated CreateTaskData based on API guide
-export interface CreateTaskData {
-  title: string
-  description?: string
-  taskListId: number
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  labels?: string[]
-  dueDate?: string
-  startDate?: string
-  assignedTo?: number[]
-  assignedDepartments?: number[]
-  estimatedHours?: number
-  status?: 'todo' | 'in_progress' | 'review' | 'done'
+// Define proper response interfaces matching the actual API
+export interface ApiTasksResponse {
+  success: boolean;
+  data: {
+    tasks: Task[];
+    total: number;
+    page: number;
+    totalPages: number;
+  };
 }
 
-export const taskService = {
-  // Get task by ID - matches API: GET /api/v1/tasks/:id
-  async getTask(id: string): Promise<Task> {
-    const response = await api.get(`/tasks/${id}`)
-    return response.data.data
-  },
+export interface ApiTaskResponse {
+  success: boolean;
+  data: Task;
+}
 
-  // Create new task - matches API: POST /api/v1/tasks
-  async createTask(data: CreateTaskData): Promise<Task> {
-    const response = await api.post('/tasks', data)
-    return response.data.data
-  },
+export interface ApiOperationResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
 
-  // Update task - matches API: PUT /api/v1/tasks/:id
-  async updateTask(id: string, data: Partial<CreateTaskData>): Promise<Task> {
-    const response = await api.put(`/tasks/${id}`, data)
-    return response.data.data
-  },
+// Legacy interfaces for backward compatibility
+export interface TasksResponse {
+  tasks: Task[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
 
-  // Delete task - matches API: DELETE /api/v1/tasks/:id
-  async deleteTask(id: string): Promise<void> {
-    await api.delete(`/tasks/${id}`)
-  },
+export interface TaskResponse extends Task {}
 
-  // Watch/Unwatch task - matches API: POST /api/v1/tasks/:id/watch
-  async watchTask(id: string): Promise<void> {
-    await api.post(`/tasks/${id}/watch`)
-  },
+export interface OperationResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
 
-  async unwatchTask(id: string): Promise<void> {
-    await api.delete(`/tasks/${id}/watch`)
-  },
+// Request parameter types
+export interface GetTasksParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  priority?: string;
+  assigneeId?: number;
+  boardId?: number;
+  listId?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
 
-  // Get tasks for a specific list (through board data)
-  async getListTasks(listId: string): Promise<Task[]> {
-    // Tasks are retrieved through board data in this API
-    const response = await api.get(`/lists/${listId}/tasks`)
-    return response.data.data || []
-  },
+export interface GetTasksByListParams {
+  page?: number;
+  limit?: number;
+}
 
-  // Get board tasks
-  async getBoardTasks(boardId: string): Promise<Task[]> {
-    const response = await api.get(`/boards/${boardId}`)
-    const board = response.data.data
-    
-    // Extract tasks from all lists
-    const tasks: Task[] = []
-    if (board.lists) {
-      board.lists.forEach((list: any) => {
-        if (list.tasks) {
-          tasks.push(...list.tasks)
-        }
-      })
-    }
-    return tasks
-  },
+export interface GetCommentsParams {
+  page?: number;
+  limit?: number;
+}
 
-  // Move task (drag and drop)
-  async moveTask(taskId: string, targetListId: string, position: number): Promise<Task> {
-    const response = await api.patch(`/tasks/${taskId}/move`, {
-      targetListId,
-      position
-    })
-    return response.data.data
-  },
+export interface CreateTaskData extends CreateTaskDto {}
 
-  // Task assignees
-  async assignTask(taskId: string, userId: string): Promise<Task> {
-    const response = await api.post(`/tasks/${taskId}/assignees`, { userId })
-    return response.data.data
-  },
+export interface UpdateTaskData extends UpdateTaskDto {}
 
-  async unassignTask(taskId: string, userId: string): Promise<Task> {
-    const response = await api.delete(`/tasks/${taskId}/assignees/${userId}`)
-    return response.data.data
-  },
+export interface CreateCommentData {
+  taskId: number;
+  content: string;
+  attachments?: string[];
+}
 
-  // Archive/Unarchive task
-  async archiveTask(id: string): Promise<Task> {
-    const response = await api.patch(`/tasks/${id}/archive`)
-    return response.data.data
-  },
+export interface UpdateCommentData {
+  content: string;
+}
 
-  async unarchiveTask(id: string): Promise<Task> {
-    const response = await api.patch(`/tasks/${id}/unarchive`)
-    return response.data.data
-  },
+export interface CommentsResponse {
+  success: boolean;
+  data: any[];
+  pagination: {
+    total: number;
+    page: number;
+    totalPages: number;
+  };
+}
 
-  // Get all tasks for current user with filters
-  async getAllTasks(params?: {
-    search?: string;
-    status?: string;
-    priority?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<{ tasks: Task[]; total: number; page: number; totalPages: number }> {
+export interface WatchResponse {
+  success: boolean;
+  message: string;
+  data: {
+    watching: boolean;
+  };
+}
+
+// TaskService class implementation
+class TaskService {
+  // Task CRUD operations - now properly handling the API response format
+  async getTasks(params?: GetTasksParams): Promise<TasksResponse> {
     const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    const response = await api.get<ApiTasksResponse>(`/tasks${queryParams.toString() ? `?${queryParams.toString()}` : ''}`);
     
-    if (params?.search) queryParams.append("search", params.search);
-    if (params?.status) queryParams.append("status", params.status);
-    if (params?.priority) queryParams.append("priority", params.priority);
-    if (params?.page) queryParams.append("page", params.page.toString());
-    if (params?.limit) queryParams.append("limit", params.limit.toString());
-
-    const response = await api.get(`/tasks?${queryParams.toString()}`);
-    return response.data.data;
-  },
-
-  // Duplicate task
-  async duplicateTask(id: string): Promise<Task> {
-    const response = await api.post(`/tasks/${id}/duplicate`)
-    return response.data.data
+    // Transform the API response to the expected format
+    const apiResponse = response.data;
+    return {
+      tasks: apiResponse.data.tasks,
+      total: apiResponse.data.total,
+      page: apiResponse.data.page,
+      totalPages: apiResponse.data.totalPages
+    };
   }
+
+  async getTaskById(id: number): Promise<TaskResponse> {
+    const response = await api.get<ApiTaskResponse>(`/tasks/${id}`);
+    // Return the task data directly
+    return response.data.data;
+  }
+
+  async createTask(data: CreateTaskData): Promise<Task> {
+    const response = await api.post<ApiTaskResponse>('/tasks', data);
+    return response.data.data;
+  }
+
+  async updateTask(id: number, data: UpdateTaskData): Promise<Task> {
+    const response = await api.put<ApiTaskResponse>(`/tasks/${id}`, data);
+    return response.data.data;
+  }
+
+  async deleteTask(id: number): Promise<OperationResponse> {
+    const response = await api.delete<ApiOperationResponse>(`/tasks/${id}`);
+    return response.data;
+  }
+
+  // Task actions
+  async toggleWatchTask(id: number): Promise<WatchResponse> {
+    const response = await api.post<WatchResponse>(`/tasks/${id}/watch`);
+    return response.data;
+  }
+
+  async getTasksByList(listId: number, params?: GetTasksByListParams): Promise<TasksResponse> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    const response = await api.get<ApiTasksResponse>(`/tasks/list/${listId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`);
+    
+    // Transform the API response to the expected format
+    const apiResponse = response.data;
+    return {
+      tasks: apiResponse.data.tasks,
+      total: apiResponse.data.total,
+      page: apiResponse.data.page,
+      totalPages: apiResponse.data.totalPages
+    };
+  }
+
+  // Comments
+  async getTaskComments(taskId: number, params?: GetCommentsParams): Promise<CommentsResponse> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    const response = await api.get(`/comments/task/${taskId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`);
+    return response.data;
+  }
+
+  async addComment(data: CreateCommentData): Promise<OperationResponse> {
+    const response = await api.post('/comments', data);
+    return response.data;
+  }
+
+  async updateComment(id: number, data: UpdateCommentData): Promise<OperationResponse> {
+    const response = await api.put(`/comments/${id}`, data);
+    return response.data;
+  }
+
+  async deleteComment(id: number): Promise<OperationResponse> {
+    const response = await api.delete(`/comments/${id}`);
+    return response.data;
+  }
+
+  // Task notifications
+  async getTaskNotifications(taskId: number, params?: GetCommentsParams): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    const response = await api.get(`/tasks/${taskId}/notifications${queryParams.toString() ? `?${queryParams.toString()}` : ''}`);
+    return response.data;
+  }
+
+  // Convenience methods that maintain backward compatibility
+  getAllTasks(params?: GetTasksParams): Promise<TasksResponse> {
+    return this.getTasks(params);
+  }
+
+  getTask(id: number): Promise<Task> {
+    return this.getTaskById(id);
+  }
+
+  async getListTasks(listId: string | number): Promise<Task[]> {
+    const result = await this.getTasksByList(Number(listId));
+    return result.tasks;
+  }
+
+  // Board tasks (for compatibility with existing hooks)
+  async getBoardTasks(boardId: string | number): Promise<Task[]> {
+    const response = await api.get<ApiTasksResponse>(`/tasks?boardId=${boardId}`);
+    return response.data.data.tasks;
+  }
+
+  // Task movement and assignment (for compatibility)
+  async moveTask(taskId: number, targetListId: number, position?: number): Promise<Task> {
+    const response = await api.put<ApiTaskResponse>(`/tasks/${taskId}/move`, { targetListId, position });
+    return response.data.data;
+  }
+
+  async assignTask(taskId: number, userId: number): Promise<Task> {
+    const response = await api.post<ApiTaskResponse>(`/tasks/${taskId}/assign`, { userId });
+    return response.data.data;
+  }
+
+  async unassignTask(taskId: number, userId: number): Promise<Task> {
+    const response = await api.delete<ApiTaskResponse>(`/tasks/${taskId}/assign/${userId}`);
+    return response.data.data;
+  }
+
+  // Enhanced methods for better data handling
+  async getTasksWithStats(params?: GetTasksParams): Promise<{tasks: Task[], stats: any}> {
+    const result = await this.getTasks(params);
+    // Could calculate stats here if needed
+    return {
+      tasks: result.tasks,
+      stats: {
+        total: result.total,
+        byStatus: this.groupTasksByStatus(result.tasks),
+        byPriority: this.groupTasksByPriority(result.tasks)
+      }
+    };
+  }
+
+  // Helper methods
+  private groupTasksByStatus(tasks: Task[]): Record<string, number> {
+    return tasks.reduce((acc, task) => {
+      acc[task.status] = (acc[task.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }
+
+  private groupTasksByPriority(tasks: Task[]): Record<string, number> {
+    return tasks.reduce((acc, task) => {
+      acc[task.priority] = (acc[task.priority] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }
+
+  // Fetch all tasks without pagination limits
+  async getAllTasksNoPagination(params?: Omit<GetTasksParams, 'page' | 'limit'>): Promise<Task[]> {
+    const allTasks: Task[] = [];
+    let currentPage = 1;
+    let hasMorePages = true;
+    const limit = 100; // Fetch 100 at a time for efficiency
+
+    while (hasMorePages) {
+      const response = await this.getTasks({
+        ...params,
+        page: currentPage,
+        limit: limit
+      });
+      
+      allTasks.push(...response.tasks);
+      
+      hasMorePages = currentPage < response.totalPages;
+      currentPage++;
+    }
+
+    return allTasks;
+  }
+
+  // Fetch all tasks for a specific list without pagination limits
+  async getAllListTasksNoPagination(listId: number): Promise<Task[]> {
+    const allTasks: Task[] = [];
+    let currentPage = 1;
+    let hasMorePages = true;
+    const limit = 100; // Fetch 100 at a time for efficiency
+
+    while (hasMorePages) {
+      const response = await this.getTasksByList(listId, {
+        page: currentPage,
+        limit: limit
+      });
+      
+      allTasks.push(...response.tasks);
+      
+      hasMorePages = currentPage < response.totalPages;
+      currentPage++;
+    }
+
+    return allTasks;
+  }
+
+  // Fetch all board tasks without pagination limits
+  async getAllBoardTasksNoPagination(boardId: string | number): Promise<Task[]> {
+    return this.getAllTasksNoPagination({ boardId: Number(boardId) });
+  }
+
 }
 
-export default taskService
+// Export singleton instance
+const taskService = new TaskService();
+export default taskService;
 

@@ -44,7 +44,7 @@ function createWelcomeHTML(user) {
             </div>
             
             <div style="text-align: center; margin: 40px 0;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" 
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" 
                    style="display: inline-block; padding: 12px 30px; background-color: #007bff; 
                           color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
                     Log In to Your Account
@@ -122,7 +122,7 @@ Your Account Details:
 - Role: ${user.role || 'User'}
 ${user.department ? `- Department: ${user.department}` : ''}
 
-Log in at: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login
+Log in at: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/login
 
 Need help? Contact us at ${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}
 

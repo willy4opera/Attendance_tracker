@@ -1,0 +1,85 @@
+import { useState, useEffect } from 'react';
+import { statisticsAPI } from '../services/api';
+
+interface ProjectStatistics {
+  projectId: number;
+  name: string;
+  boardCount: number;
+  totalTasks: number;
+  completedTasks: number;
+  inProgressTasks: number;
+  completionRate: number;
+}
+
+interface OverallStatistics {
+  totalTasks: number;
+  completedTasks: number;
+  inProgressTasks: number;
+  todoTasks: number;
+  avgCompletionDays: number;
+  completionRate: number;
+}
+
+interface StatisticsReport {
+  overall: OverallStatistics;
+  projects: ProjectStatistics[];
+}
+
+export const useProjectStatistics = () => {
+  const [statistics, setStatistics] = useState<StatisticsReport | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchStatistics = async () => {
+    try {
+      setLoading(true);
+      const response = await statisticsAPI.getReport();
+      
+      const data = response.data;
+      
+      // Transform the data into our format
+      const projectStats: ProjectStatistics[] = data.projectStats.map((project: any) => ({
+        projectId: project.id,
+        name: project.name,
+        boardCount: parseInt(project.board_count),
+        totalTasks: parseInt(project.total_tasks),
+        completedTasks: parseInt(project.completed_tasks),
+        inProgressTasks: parseInt(project.in_progress_tasks),
+        completionRate: project.total_tasks > 0 
+          ? Math.round((project.completed_tasks / project.total_tasks) * 100)
+          : 0
+      }));
+
+      const overallStats: OverallStatistics = {
+        totalTasks: parseInt(data.overallStats.total_tasks),
+        completedTasks: parseInt(data.overallStats.completed_tasks),
+        inProgressTasks: parseInt(data.overallStats.in_progress_tasks),
+        todoTasks: parseInt(data.overallStats.todo_tasks),
+        avgCompletionDays: parseFloat(data.overallStats.avg_completion_days),
+        completionRate: Math.round((data.overallStats.completed_tasks / data.overallStats.total_tasks) * 100)
+      };
+
+      setStatistics({
+        overall: overallStats,
+        projects: projectStats
+      });
+      setError(null);
+    } catch (err: any) {
+      console.error('Error fetching statistics:', err);
+      setError(err.message || 'Failed to fetch statistics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStatistics();
+  }, []);
+
+  return {
+    statistics,
+    loading,
+    error,
+    refetch: fetchStatistics
+  };
+};

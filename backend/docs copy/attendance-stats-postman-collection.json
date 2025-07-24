@@ -1,0 +1,194 @@
+{
+  "info": {
+    "name": "Attendance Statistics API",
+    "description": "Collection for testing Attendance Statistics endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', response.token);",
+                  "    pm.environment.set('authToken', response.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"willy4opera@gmail.com\",\n    \"password\": \"Wind@wswil24d\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Attendance Statistics",
+      "item": [
+        {
+          "name": "Get Overall Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/attendance-stats/overall",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance-stats", "overall"]
+            },
+            "description": "Get simplified statistics for dashboard cards"
+          }
+        },
+        {
+          "name": "Get Dashboard Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/attendance-stats/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance-stats", "dashboard"]
+            },
+            "description": "Get statistics for today and current week"
+          }
+        },
+        {
+          "name": "Get Comprehensive Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/attendance-stats/comprehensive",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance-stats", "comprehensive"]
+            },
+            "description": "Get detailed statistics with all breakdowns"
+          }
+        },
+        {
+          "name": "Get Comprehensive Statistics (Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/attendance-stats/comprehensive?startDate=2025-07-01&endDate=2025-07-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance-stats", "comprehensive"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2025-07-01",
+                  "description": "Filter start date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-07-31",
+                  "description": "Filter end date (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "Get statistics for a specific date range"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Test as Regular User",
+      "item": [
+        {
+          "name": "Login as User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', response.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get User Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/attendance-stats/overall",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance-stats", "overall"]
+            },
+            "description": "Get user's personal attendance statistics"
+          }
+        }
+      ]
+    }
+  ]
+}

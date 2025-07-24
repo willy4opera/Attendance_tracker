@@ -1,3 +1,4 @@
+const attendanceSocket = require('../sockets/attendanceSocket');
 const { Op } = require("sequelize");
 const { Session, Attendance, User } = require('../models');
 const jwt = require('jsonwebtoken');
@@ -73,7 +74,15 @@ exports.markAttendanceViaLink = catchAsync(async (req, res, next) => {
     return res.status(200).json({
       status: 'success',
       message: 'Attendance already marked',
-      data: { attendance: existingAttendance }
+      data: {
+        attendance: existingAttendance,
+        meetingLink: session.meetingLink || null,
+        session: {
+          id: session.id,
+          title: session.title,
+          meetingLink: session.meetingLink
+        }
+      }
     });
   }
 
@@ -101,8 +110,12 @@ exports.markAttendanceViaLink = catchAsync(async (req, res, next) => {
   // Log attendance marking
   console.log(`Attendance marked for user ${user.email} in session ${session.title}`);
 
-  // If meeting link exists, redirect to it
-  if (session.meetingLink) {
+  // Check if this is an AJAX request
+  const isAjax = req.get('Accept')?.includes('application/json') || 
+                 req.get('X-Requested-With') === 'XMLHttpRequest';
+
+  // If meeting link exists and not AJAX, redirect to it
+  if (session.meetingLink && !isAjax) {
     // Track the redirect
     await attendance.update({
       metadata: {
@@ -116,18 +129,28 @@ exports.markAttendanceViaLink = catchAsync(async (req, res, next) => {
   }
 
   // Otherwise, return success response
+  // Include user info in the response
+  await attendance.reload({
+    include: [{
+      model: User,
+      as: "user",
+      attributes: ["id", "firstName", "lastName", "email"]
+    }]
+  });
+
   res.status(200).json({
     status: 'success',
     message: 'Attendance marked successfully',
     data: {
-      attendance,
+      attendance: attendance,
+      meetingLink: session.meetingLink || null,
       session: {
+        id: session.id,
         title: session.title,
-        date: session.sessionDate,
-        time: `${session.startTime} - ${session.endTime}`
+        meetingLink: session.meetingLink,
+        meetingType: session.meetingType
       }
-    }
-  });
+    }});
 });
 
 // Generate attendance link for a user and session
@@ -148,8 +171,8 @@ exports.generateAttendanceLink = catchAsync(async (req, res, next) => {
     { expiresIn: '24h' }
   );
 
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const attendanceUrl = `${baseUrl}/api/v1/sessions/${sessionId}/join?token=${token}`;
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const attendanceUrl = `${baseUrl}/attendance/join/${sessionId}?token=${token}`;
 
   res.status(200).json({
     status: 'success',
@@ -177,12 +200,12 @@ exports.getSessionAttendance = catchAsync(async (req, res, next) => {
   const { count, rows: attendances } = await Attendance.findAndCountAll({
     where: { sessionId },
     include: [{
-      model: User,
-      attributes: ['id', 'email', 'firstName', 'lastName', 'department']
+      model: User, as: "user",
+      attributes: ['id', 'email', 'firstName', 'lastName']
     }],
     limit,
     offset,
-    order: [['checkInTime', 'DESC']]
+    order: [['check_in_time', 'DESC']]
   });
 
   res.status(200).json({
@@ -222,7 +245,7 @@ exports.getUserAttendance = catchAsync(async (req, res, next) => {
     }],
     limit,
     offset,
-    order: [['checkInTime', 'DESC']]
+    order: [['check_in_time', 'DESC']]
   });
 
   // Calculate attendance statistics
@@ -305,10 +328,111 @@ exports.markAttendanceManually = catchAsync(async (req, res, next) => {
     });
   }
 
+  // Emit socket event for real-time updates
+  await attendanceSocket.emitAttendanceMarked(attendance, session, user);
+
   res.status(200).json({
     status: 'success',
     message: 'Attendance marked successfully',
     data: { attendance }
+  });
+});
+
+
+// Update attendance record
+exports.updateAttendance = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const { status, checkInTime, notes } = req.body;
+
+  // Find attendance record
+  const attendance = await Attendance.findByPk(id, {
+    include: [
+      {
+        model: User,
+        as: 'user',
+        attributes: ['id', 'firstName', 'lastName', 'email']
+      },
+      {
+        model: Session,
+        as: 'session',
+        attributes: ['id', 'title', 'sessionDate', 'startTime', 'endTime']
+      }
+    ]
+  });
+
+  if (!attendance) {
+    return next(new AppError('Attendance record not found', 404));
+  }
+
+  // Validate status
+  const validStatuses = ['present', 'late', 'absent', 'excused', 'holiday'];
+  if (status && !validStatuses.includes(status)) {
+    return next(new AppError('Invalid status. Must be one of: present, late, absent, excused', 400));
+  }
+
+  // Prepare update data
+  const updateData = {};
+  if (status) updateData.status = status;
+  if (checkInTime) updateData.checkInTime = new Date(checkInTime);
+  if (notes !== undefined) updateData.notes = notes;
+
+  // Add metadata about who updated it
+  updateData.metadata = {
+    ...attendance.metadata,
+    updatedBy: req.user.id,
+    updatedAt: new Date(),
+    previousStatus: attendance.status
+  };
+
+  // Update the attendance record
+  const updatedAttendance = await attendance.update(updateData);
+
+  // Reload with associations
+  await updatedAttendance.reload({
+    include: [
+      {
+        model: User,
+        as: 'user',
+        attributes: ['id', 'firstName', 'lastName', 'email']
+      },
+      {
+        model: Session,
+        as: 'session',
+        attributes: ['id', 'title', 'sessionDate', 'startTime', 'endTime']
+      }
+    ]
+  });
+
+  // Emit socket event for real-time updates
+  await attendanceSocket.emitAttendanceUpdated(updatedAttendance, updatedAttendance.session, req.user);
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Attendance record updated successfully',
+    data: {
+      attendance: updatedAttendance
+    }
+  });
+});
+
+// Delete attendance record
+exports.deleteAttendance = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Find attendance record
+  const attendance = await Attendance.findByPk(id);
+
+  if (!attendance) {
+    return next(new AppError('Attendance record not found', 404));
+  }
+
+  // Delete the attendance record
+  await attendance.destroy();
+
+  res.status(204).json({
+    status: 'success',
+    message: 'Attendance record deleted successfully',
+    data: null
   });
 });
 

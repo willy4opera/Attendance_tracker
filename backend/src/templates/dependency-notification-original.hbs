@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; 
+      background-color: #f5f5f5; 
+      margin: 0; 
+      padding: 20px; 
+    }
+    .container { 
+      max-width: 600px; 
+      margin: 0 auto; 
+      background-color: #ffffff; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+      color: #ffffff; 
+      padding: 30px 20px; 
+      text-align: center; 
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .content { 
+      padding: 30px 20px; 
+      color: #333333;
+      line-height: 1.6;
+    }
+    .task-info {
+      background-color: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .task-info strong {
+      color: #667eea;
+    }
+    .dependency-type {
+      display: inline-block;
+      background-color: #667eea;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 14px;
+      margin: 10px 0;
+    }
+    .button { 
+      background-color: #667eea; 
+      color: #ffffff; 
+      padding: 12px 24px; 
+      text-decoration: none; 
+      border-radius: 4px; 
+      display: inline-block; 
+      margin-top: 20px;
+    }
+    .footer { 
+      text-align: center; 
+      color: #666666; 
+      font-size: 12px; 
+      padding: 20px; 
+      border-top: 1px solid #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Task Dependency Notification</h1>
+    </div>
+    <div class="content">
+      <p>Hi {{user}},</p>
+      
+      <p>A new task dependency has been created that affects your work:</p>
+      
+      <div class="dependency-type">
+        {{#if dependency.type}}
+          Dependency Type: {{dependency.type}}
+        {{else}}
+          Dependency Type: Finish-to-Start
+        {{/if}}
+      </div>
+      
+      {{#if predecessorTask}}
+      <div class="task-info">
+        <strong>Predecessor Task:</strong><br>
+        {{predecessorTask.title}}<br>
+        <small>Status: {{predecessorTask.status}}</small>
+      </div>
+      {{/if}}
+      
+      {{#if successorTask}}
+      <div class="task-info">
+        <strong>Successor Task:</strong><br>
+        {{successorTask.title}}<br>
+        <small>Status: {{successorTask.status}}</small>
+      </div>
+      {{/if}}
+      
+      <p>
+        {{#if dependency.type}}
+          {{#eq dependency.type "FS"}}
+            The predecessor task must be completed before the successor task can begin.
+          {{/eq}}
+          {{#eq dependency.type "SS"}}
+            Both tasks must start together.
+          {{/eq}}
+          {{#eq dependency.type "FF"}}
+            Both tasks must finish together.
+          {{/eq}}
+          {{#eq dependency.type "SF"}}
+            The successor task must finish before the predecessor task can begin.
+          {{/eq}}
+        {{else}}
+          The predecessor task must be completed before the successor task can begin.
+        {{/if}}
+      </p>
+      
+      {{#if dependency.lagTime}}
+      <p><small>Lag time: {{dependency.lagTime}} hours</small></p>
+      {{/if}}
+      
+      <a href="{{#if appUrl}}{{appUrl}}/tasks{{else}}#{{/if}}" class="button">View Tasks</a>
+    </div>
+    <div class="footer">
+      <p>This is an automated notification from Attendance Tracker.</p>
+      <p>Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>

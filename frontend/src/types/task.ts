@@ -1,7 +1,9 @@
+import type { ID } from './common';
+
 
 // Task types based on the Comprehensive API Guide
 export interface Task {
-  id: number
+  id: ID
   title: string
   description?: string
   taskListId: number
@@ -9,7 +11,7 @@ export interface Task {
   createdBy: number
   assignedTo: number[]
   priority: 'low' | 'medium' | 'high' | 'urgent'
-  status: 'todo' | 'in_progress' | 'review' | 'done'
+  status: 'todo' | 'in-progress' | 'under-review' | 'done'
   dueDate?: string
   startDate?: string
   completedAt?: string
@@ -33,22 +35,22 @@ export interface Task {
   createdAt: string
   updatedAt: string
   creator?: {
-    id: number
+    id: ID
     firstName: string
     lastName: string
     email: string
     profilePicture?: string
   }
   list?: {
-    id: number
+    id: ID
     name: string
     board?: {
-      id: number
+      id: ID
       name: string
     }
   }
   watchers?: {
-    id: number
+    id: ID
     firstName: string
     lastName: string
     email: string
@@ -59,11 +61,11 @@ export interface Task {
 }
 
 export interface TaskAssignee {
-  id: string
+  id: ID
   taskId: string
   userId: string
   user: {
-    id: string
+    id: ID
     firstName: string
     lastName: string
     email: string
@@ -73,7 +75,7 @@ export interface TaskAssignee {
 }
 
 export interface TaskLabel {
-  id: string
+  id: ID
   name: string
   color: string
   boardId: string
@@ -82,7 +84,7 @@ export interface TaskLabel {
 }
 
 export interface TaskAttachment {
-  id: string
+  id: ID
   taskId: string
   filename: string
   originalName: string
@@ -95,7 +97,7 @@ export interface TaskAttachment {
 }
 
 export interface TaskComment {
-  id: string
+  id: ID
   taskId: string
   content: string
   author?: User
@@ -109,7 +111,7 @@ export interface TaskComment {
 }
 
 export interface TaskChecklistItem {
-  id: string
+  id: ID
   taskId: string
   text: string
   isCompleted: boolean
@@ -154,7 +156,7 @@ export interface CreateTaskDto {
   assignedTo?: number[]
   assignedDepartments?: number[]
   estimatedHours?: number
-  status?: 'todo' | 'in_progress' | 'review' | 'done'
+  status?: 'todo' | 'in-progress' | 'under-review' | 'done'
 }
 
 export interface UpdateTaskDto extends Partial<CreateTaskDto> {
@@ -200,10 +202,10 @@ export enum TaskPriority {
 
 export enum TaskStatus {
   TODO = 'todo',
-  IN_PROGRESS = 'in_progress',
-  REVIEW = 'review',
+  IN_PROGRESS = 'in-progress',
+  REVIEW = 'under-review',
   DONE = 'done'
 }
 
 // Import User type for references
-import type { User } from './index'
+// Assuming User type is defined elsewhere or will be passed as generic

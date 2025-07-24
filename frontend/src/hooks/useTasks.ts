@@ -1,5 +1,6 @@
+import { apiCache } from '../utils/apiCache';
 import { useState, useEffect, useCallback } from 'react'
-import { taskService, type CreateTaskData } from '../services/taskService'
+import taskService, { type CreateTaskData } from '../services/taskService'
 import type { Task, TasksResponse, UpdateTaskDto, TaskWithStats } from '../types'
 
 export const useTasks = (params?: {
@@ -25,18 +26,18 @@ export const useTasks = (params?: {
       
       if (params?.listId) {
         // Get tasks for a specific list
-        tasksData = await taskService.getListTasks(params.listId)
+        tasksData = await taskService.getAllListTasksNoPagination(Number(params.listId))
       } else if (params?.boardId) {
         // Get tasks for a specific board
-        tasksData = await taskService.getBoardTasks(params.boardId)
+        tasksData = await taskService.getAllBoardTasksNoPagination(params.boardId)
       } else {
         // Get all tasks for the current user with filters
-        const result = await taskService.getAllTasks({
+        tasksData = await taskService.getAllTasksNoPagination({
           search: params?.search,
           status: params?.status,
-          priority: params?.priority
+          priority: params?.priority,
+          assigneeId: params?.assigneeId
         })
-        tasksData = result.tasks
       }
       
       setTasks(tasksData)
@@ -208,13 +209,17 @@ export const useTask = (id: string) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchTask = useCallback(async () => {
+  const fetchTask = useCallback(async (forceRefresh: boolean = false) => {
     if (!id) return
 
     setLoading(true)
     setError(null)
     
     try {
+      // Clear cache if force refresh is requested
+      if (forceRefresh) {
+        apiCache.invalidatePattern(`GET:/tasks/${id}`);
+      }
       const taskData = await taskService.getTask(id)
       setTask(taskData)
     } catch (err) {
@@ -230,7 +235,7 @@ export const useTask = (id: string) => {
   }, [fetchTask])
 
   const refreshTask = useCallback(() => {
-    fetchTask()
+    fetchTask(true)
   }, [fetchTask])
 
   return {

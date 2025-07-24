@@ -18,7 +18,7 @@ interface UserDetails {
   lastName: string
   phoneNumber?: string
   role: string
-  department?: {
+  department?: string | {
     id: number
     name: string
     code: string
@@ -64,6 +64,12 @@ interface UserDetails {
 
 export default function UserDetailsModal({ userId, onClose }: UserDetailsModalProps) {
   const [user, setUser] = useState<UserDetails | null>(null)
+  const getDepartmentName = (department: string | { id: number; name: string; code: string } | undefined): string | undefined => {
+    if (!department) return undefined;
+    if (typeof department === "string") return department;
+    return department.name;
+  };
+
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -177,7 +183,7 @@ export default function UserDetailsModal({ userId, onClose }: UserDetailsModalPr
                 </span>
                 {user.department && (
                   <span className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm bg-blue-100 text-blue-800">
-                    {user.department.name}
+                    {getDepartmentName(user.department)}
                   </span>
                 )}
               </div>

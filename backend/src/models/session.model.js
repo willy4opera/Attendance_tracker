@@ -147,6 +147,32 @@ const Session = sequelize.define('Session', {
     allowNull: true,
     field: 'qr_code'
   },
+  totalAttendance: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    field: "total_attendance",
+    validate: {
+      min: 0
+    }
+  },
+  files: {
+    type: DataTypes.JSONB,
+    defaultValue: [],
+    field: "files",
+    comment: "Array of file objects with url, name, uploadedAt, uploadedBy"
+  },
+  expectedAttendees: {
+    type: DataTypes.ARRAY(DataTypes.INTEGER),
+    defaultValue: [],
+    field: "expected_attendees",
+    comment: "Array of user IDs expected to attend this session"
+  },
+  expectedAttendeesCount: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    field: "expected_attendees_count",
+    comment: "Cached count of expected attendees for performance"
+  },
   metadata: {
     type: DataTypes.JSONB,
     defaultValue: {}
@@ -187,7 +213,7 @@ const Session = sequelize.define('Session', {
 
 // Instance methods
 Session.prototype.generateAttendanceUrl = function(userId) {
-  const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const token = jwt.sign(
     { 
       sessionId: this.id, 
@@ -197,7 +223,7 @@ Session.prototype.generateAttendanceUrl = function(userId) {
     process.env.JWT_SECRET,
     { expiresIn: '24h' }
   );
-  return `${baseUrl}/api/v1/sessions/${this.id}/join?token=${token}`;
+  return `${baseUrl}/attendance/join/${this.id}?token=${token}`;
 };
 
 Session.prototype.isWithinAttendanceWindow = function() {

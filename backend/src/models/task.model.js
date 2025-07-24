@@ -29,6 +29,15 @@ const Task = sequelize.define('Task', {
       key: 'id'
     }
   },
+  boardId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'board_id',
+    references: {
+      model: 'Boards',
+      key: 'id'
+    }
+  },
   position: {
     type: DataTypes.INTEGER,
     allowNull: false,
@@ -48,12 +57,17 @@ const Task = sequelize.define('Task', {
     field: 'assigned_to',
     defaultValue: []
   },
+  assignedDepartments: {
+    type: DataTypes.ARRAY(DataTypes.INTEGER),
+    field: 'assigned_departments',
+    defaultValue: []
+  },
   priority: {
     type: DataTypes.ENUM('low', 'medium', 'high', 'urgent'),
     defaultValue: 'medium'
   },
   status: {
-    type: DataTypes.ENUM('todo', 'in_progress', 'review', 'done', 'cancelled'),
+    type: DataTypes.ENUM('todo', 'in-progress', 'under-review', 'done', 'archived'),
     defaultValue: 'todo'
   },
   dueDate: {
@@ -69,6 +83,21 @@ const Task = sequelize.define('Task', {
   completedAt: {
     type: DataTypes.DATE,
     field: 'completed_at',
+    allowNull: true
+  },
+  submittedForReviewAt: {
+    type: DataTypes.DATE,
+    field: "submitted_for_review_at",
+    allowNull: true
+  },
+  approvedBy: {
+    type: DataTypes.INTEGER,
+    field: "approved_by",
+    allowNull: true
+  },
+  approvedAt: {
+    type: DataTypes.DATE,
+    field: "approved_at",
     allowNull: true
   },
   estimatedHours: {
@@ -142,6 +171,9 @@ const Task = sequelize.define('Task', {
   timestamps: true,
   underscored: true,
   indexes: [
+    {
+      fields: ['board_id']
+    },
     {
       fields: ['task_list_id', 'position']
     },

@@ -1,0 +1,100 @@
+<mjml>
+  <mj-head>
+    <mj-title>Task Dependency Update</mj-title>
+    <mj-attributes>
+      <mj-all font-family="Arial, sans-serif" />
+      <mj-text padding="0" line-height="1.4" />
+      <mj-section padding="0" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f5f5f5">
+    <!-- Preheader text - crucial for Gmail -->
+    <mj-section>
+      <mj-column>
+        <mj-raw>
+          <div style="display: none; max-height: 0; overflow: hidden;">
+            {{actionType}} dependency: {{predecessorTask.title}} → {{successorTask.title}} at {{timestamp}}
+          </div>
+          <div style="display: none; max-height: 0; overflow: hidden;">
+            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+          </div>
+        </mj-raw>
+      </mj-column>
+    </mj-section>
+    
+    <!-- Compact Header -->
+    <mj-section background-color="#000000" padding="10px">
+      <mj-column>
+        <mj-text align="center" font-size="14px" font-weight="bold" color="#fddc9a">
+          CHANGE AMBASSADORS
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    
+    <!-- Main Content -->
+    <mj-section background-color="#ffffff" padding="15px">
+      <mj-column>
+        <mj-text font-size="18px" font-weight="600" color="#1a202c" padding-bottom="10px">
+          Dependency {{actionType}} 🔗
+        </mj-text>
+        
+        <!-- Compact Details Card -->
+        <mj-wrapper background-color="#f8f9fa" padding="12px" border-radius="6px">
+          <mj-section padding="0">
+            <mj-column>
+              <!-- Type and Time in one line -->
+              <mj-text font-size="13px" color="#666" padding-bottom="8px">
+                <strong>{{dependency.type}}</strong> • {{dependency.lagTime}} days • {{timestamp}}
+              </mj-text>
+              
+              <!-- Tasks flow -->
+              <mj-text padding="0">
+                <div style="background: #fff8dc; padding: 8px; border-radius: 4px; margin-bottom: 6px; border-left: 3px solid #fddc9a;">
+                  <div style="font-size: 11px; color: #999;">FROM</div>
+                  <div style="font-size: 14px; font-weight: 600; color: #333;">{{predecessorTask.title}}</div>
+                  <div style="font-size: 12px; color: #666;">{{predecessorTask.status}}</div>
+                </div>
+                
+                <div style="text-align: center; color: #999; font-size: 16px; margin: 4px 0;">↓</div>
+                
+                <div style="background: #e6f3ff; padding: 8px; border-radius: 4px; border-left: 3px solid #4682b4;">
+                  <div style="font-size: 11px; color: #999;">TO</div>
+                  <div style="font-size: 14px; font-weight: 600; color: #333;">{{successorTask.title}}</div>
+                  <div style="font-size: 12px; color: #666;">{{successorTask.status}}</div>
+                </div>
+              </mj-text>
+              
+              <!-- Reference ID -->
+              <mj-text font-size="11px" color="#999" padding-top="8px">
+                Ref: {{uniqueId}}
+              </mj-text>
+            </mj-column>
+          </mj-section>
+        </mj-wrapper>
+        
+        <!-- Compact CTA -->
+        <mj-button 
+          background-color="#667eea" 
+          color="#ffffff" 
+          font-size="14px"
+          padding="15px 0 5px 0"
+          inner-padding="8px 20px"
+          border-radius="4px"
+          href="{{dashboardUrl}}"
+          font-weight="500"
+        >
+          View Details
+        </mj-button>
+      </mj-column>
+    </mj-section>
+    
+    <!-- Minimal Footer -->
+    <mj-section padding="10px" background-color="#f5f5f5">
+      <mj-column>
+        <mj-text align="center" font-size="11px" color="#999">
+          © {{year}} Change Ambassadors
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

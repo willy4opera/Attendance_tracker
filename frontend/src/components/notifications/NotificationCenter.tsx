@@ -1,6 +1,7 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FaBell, FaTimes, FaComment, FaHeart, FaUser, FaCheck } from 'react-icons/fa';
-import { useNotifications, useUnreadCount } from '../../hooks/useNotifications';
+import { useNotificationContext } from '../../contexts/NotificationProvider';
 import UserAvatar from '../social/UserAvatar';
 import type { Notification } from '../../types/notification';
 
@@ -10,181 +11,179 @@ interface NotificationCenterProps {
 }
 
 const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose }) => {
+  const navigate = useNavigate();
   const {
     notifications,
-    isLoading,
+    unreadCount,
     markAsRead,
     markAllAsRead,
-    deleteNotification,
-  } = useNotifications({ refetchInterval: 60000 }); // Refresh every minute
-
-  const unreadCountQuery = useUnreadCount();
-  const unreadCount = unreadCountQuery.data?.data?.count || 0;
+  } = useNotificationContext();
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'comment':
-        return <FaComment className="h-4 w-4 text-blue-500" />;
-      case 'mention':
-        return <FaUser className="h-4 w-4 text-purple-500" />;
+        return <FaComment className="text-blue-500" />;
       case 'like':
-        return <FaHeart className="h-4 w-4 text-red-500" />;
-      case 'task_assigned':
-        return <FaCheck className="h-4 w-4 text-green-500" />;
+        return <FaHeart className="text-red-500" />;
+      case 'follow':
+        return <FaUser className="text-green-500" />;
+      case 'dependency_created':
+      case 'dependency_updated':
+      case 'dependency_resolved':
+      case 'dependency_violated':
+        return <FaBell className="text-yellow-500" />;
+      case 'task_assignment':
+        return <FaBell className="text-purple-500" />;
+      case 'dependency':
+        return <FaBell className="text-orange-500" />;
       default:
-        return <FaBell className="h-4 w-4 text-gray-500" />;
+        return <FaBell className="text-gray-500" />;
     }
   };
 
-  const handleNotificationClick = (notification: Notification) => {
+  const formatTime = (date: string) => {
+    const now = new Date();
+    const notificationDate = new Date(date);
+    const diffInSeconds = Math.floor((now.getTime() - notificationDate.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    
+    return notificationDate.toLocaleDateString();
+  };
+
+  const handleNotificationClick = async (notification: Notification) => {
+    try {
     if (!notification.isRead) {
-      markAsRead(notification.id);
+      await markAsRead(notification.id);
     }
     
-    // Navigate to relevant page based on notification data
-    const { data } = notification;
-    if (data.taskId) {
-      // Navigate to task
-      window.location.href = `/tasks/${data.taskId}`;
-    } else if (data.boardId) {
-      // Navigate to board
-      window.location.href = `/boards/${data.boardId}`;
+    // Handle navigation based on notification type
+    let navigateTo: string | null = null;
+    
+    // Check for URL in various locations
+    if (notification.url) {
+      navigateTo = notification.url;
+    } else if (notification.data?.url) {
+      navigateTo = notification.data.url;
+    } else if (notification.data?.taskId) {
+      navigateTo = `/tasks/${notification.data.taskId}`;
+    } else if (notification.taskId) {
+      navigateTo = `/tasks/${notification.taskId}`;
+    }
+    
+    // Navigate and close the notification center
+    if (navigateTo) {
+      navigate(navigateTo);
+      onClose();
+    }
+    } catch (error) {
+      console.error('Error in notification click handler:', error);
+      // Continue with navigation even if marking as read fails
+      
+      // Extract navigation URL again in case of error
+      let navigateTo: string | null = null;
+      if (notification.url) {
+        navigateTo = notification.url;
+      } else if (notification.data?.url) {
+        navigateTo = notification.data.url;
+      } else if (notification.data?.taskId) {
+        navigateTo = `/tasks/${notification.data.taskId}`;
+      } else if (notification.taskId) {
+        navigateTo = `/tasks/${notification.taskId}`;
+      }
+      
+      if (navigateTo) {
+        navigate(navigateTo);
+        onClose();
+      }
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <>
-      {/* Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-25 z-40"
-          onClick={onClose}
-        />
-      )}
-
+    <div className="fixed inset-0 z-50 flex items-start justify-end pt-16 px-4">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50"
+        onClick={onClose}
+      />
+      
       {/* Notification Panel */}
-      <div
-        className={`fixed top-0 right-0 w-full md:w-96 h-full bg-white shadow-xl z-50 transition-transform transform ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
+      <div className="relative w-full max-w-md bg-white rounded-lg shadow-xl z-10 max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between border-b p-4 bg-gray-50">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">
             Notifications
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 p-1"
-          >
-            <FaTimes className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Actions */}
-        <div className="border-b p-4 bg-gray-50">
-          <div className="flex items-center justify-between">
+            {unreadCount > 0 && (
+              <span className="ml-2 text-sm text-gray-500">
+                ({unreadCount} unread)
+              </span>
+            )}
+          </h3>
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllAsRead}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Mark all as read
+              </button>
+            )}
             <button
-              onClick={() => markAllAsRead()}
-              className="text-sm text-blue-600 hover:text-blue-800"
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
             >
-              Mark all as read
+              <FaTimes />
             </button>
-            <span className="text-sm text-gray-600">
-              {unreadCount} unread
-            </span>
           </div>
         </div>
 
-        {/* Notification List */}
+        {/* Notifications List */}
         <div className="flex-1 overflow-y-auto">
-          {isLoading ? (
-            <div className="p-4 text-center text-gray-500">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-              Loading notifications...
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              <FaBell className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p>No notifications yet</p>
+          {notifications.length === 0 ? (
+            <div className="px-4 py-8 text-center text-gray-500">
+              No notifications yet
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="divide-y divide-gray-200">
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-4 border-b cursor-pointer hover:bg-gray-50 ${
+                  onClick={() => handleNotificationClick(notification)}
+                  className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${
                     !notification.isRead ? 'bg-blue-50' : ''
                   }`}
-                  onClick={() => handleNotificationClick(notification)}
                 >
-                  <div className="flex items-start space-x-3">
-                    {/* Notification Icon */}
+                  <div className="flex items-start gap-3">
+                    {/* Icon */}
                     <div className="flex-shrink-0 mt-1">
-                      {getNotificationIcon(notification.type)}
+                      {getNotificationIcon(notification.notificationType || notification.type)}
                     </div>
 
-                    {/* Notification Content */}
+                    {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-medium text-gray-900 truncate">
-                          {notification.title}
-                        </h3>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {notification.content?.subject || 'Notification'}
+                          </p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {notification.content?.body || 'No content'}
+                          </p>
+                        </div>
                         {!notification.isRead && (
-                          <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 ml-2" />
+                          <div className="flex-shrink-0 ml-2">
+                            <div className="w-2 h-2 bg-blue-600 rounded-full" />
+                          </div>
                         )}
                       </div>
-                      
-                      <p className="text-sm text-gray-600 mt-1">
-                        {notification.message}
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatTime(notification.createdAt)}
                       </p>
-
-                      {/* User Avatar for mentions */}
-                      {notification.data.mentionedBy && (
-                        <div className="flex items-center space-x-2 mt-2">
-                          <UserAvatar 
-                            user={notification.data.mentionedBy}
-                            size="sm"
-                          />
-                          <span className="text-xs text-gray-500">
-                            {notification.data.mentionedBy.firstName} {notification.data.mentionedBy.lastName}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Task/Board Context */}
-                      {notification.data.task && (
-                        <div className="mt-2 text-xs text-gray-500">
-                          Task: <span className="font-medium">{notification.data.task.title}</span>
-                        </div>
-                      )}
-
-                      {notification.data.board && (
-                        <div className="mt-2 text-xs text-gray-500">
-                          Board: <span className="font-medium">{notification.data.board.name}</span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-gray-500">
-                          {new Date(notification.createdAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                        
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteNotification(notification.id);
-                          }}
-                          className="text-xs text-red-500 hover:text-red-700"
-                        >
-                          Delete
-                        </button>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -193,7 +192,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

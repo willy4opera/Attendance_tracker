@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Project-Board API</title>
+</head>
+<body>
+    <h1>Project-Board Relationship Test</h1>
+    <button onclick="runTest()">Run Test</button>
+    <pre id="output"></pre>
+
+    <script>
+        const API_BASE_URL = '/api/v1';
+        const output = document.getElementById('output');
+        
+        function log(message) {
+            output.textContent += message + '\n';
+            console.log(message);
+        }
+        
+        async function runTest() {
+            output.textContent = '';
+            
+            try {
+                // 1. Login
+                log('1. Logging in...');
+                const loginResponse = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'willy4opera@gmail.com',
+                        password: 'Wind@wswil24d'
+                    })
+                });
+                
+                const loginData = await loginResponse.json();
+                if (!loginResponse.ok) {
+                    throw new Error(loginData.message || 'Login failed');
+                }
+                
+                const accessToken = loginData.data.accessToken;
+                log('✓ Login successful');
+                
+                // Set auth headers
+                const authHeaders = {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                };
+                
+                // 2. Get projects
+                log('\n2. Fetching projects...');
+                const projectsResponse = await fetch(`${API_BASE_URL}/projects`, {
+                    headers: authHeaders
+                });
+                const projectsData = await projectsResponse.json();
+                const projects = projectsData.data.projects;
+                log(`✓ Found ${projects.length} projects`);
+                
+                // Display project details
+                projects.forEach(project => {
+                    log(`\nProject: ${project.name} (ID: ${project.id})`);
+                    log(`  - Status: ${project.status}`);
+                    log(`  - Stats: ${JSON.stringify(project.stats || {})}`);
+                });
+                
+                // 3. Check boards for each project
+                log('\n3. Checking boards for each project...');
+                for (const project of projects) {
+                    const boardsResponse = await fetch(`${API_BASE_URL}/boards?projectId=${project.id}`, {
+                        headers: authHeaders
+                    });
+                    const boardsData = await boardsResponse.json();
+                    const boards = boardsData.data.boards;
+                    log(`\nProject "${project.name}" has ${boards.length} boards`);
+                    
+                    if (boards.length > 0) {
+                        boards.forEach(board => {
+                            log(`    • ${board.name} (ID: ${board.id}, ProjectID: ${board.projectId})`);
+                        });
+                    }
+                }
+                
+                // 4. Get all boards
+                log('\n4. Fetching all boards...');
+                const allBoardsResponse = await fetch(`${API_BASE_URL}/boards`, {
+                    headers: authHeaders
+                });
+                const allBoardsData = await allBoardsResponse.json();
+                const allBoards = allBoardsData.data.boards;
+                log(`✓ Total boards: ${allBoards.length}`);
+                
+                const boardsWithProject = allBoards.filter(b => b.projectId);
+                const boardsWithoutProject = allBoards.filter(b => !b.projectId);
+                
+                log(`  - Boards with projectId: ${boardsWithProject.length}`);
+                log(`  - Boards without projectId: ${boardsWithoutProject.length}`);
+                
+                log('\nFirst 5 boards:');
+                allBoards.slice(0, 5).forEach(board => {
+                    log(`  • ${board.name} (ID: ${board.id}, ProjectID: ${board.projectId || 'NULL'})`);
+                });
+                
+            } catch (error) {
+                log(`Error: ${error.message}`);
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>

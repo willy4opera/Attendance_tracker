@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google OAuth Test</title>
+    <meta name="google-signin-client_id" content="367125670991-4m973tbfjl9ngqnol3omljr1so90edq0.apps.googleusercontent.com">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Google OAuth Test</h1>
+    
+    <p>Click the button below to sign in with Google:</p>
+    
+    <div id="g_id_onload"
+         data-client_id="367125670991-4m973tbfjl9ngqnol3omljr1so90edq0.apps.googleusercontent.com"
+         data-callback="handleCredentialResponse">
+    </div>
+    <div class="g_id_signin" data-type="standard" data-size="large"></div>
+    
+    <div id="result" class="result" style="display: none;"></div>
+    
+    <h2>Test Information</h2>
+    <ul>
+        <li>API Endpoint: <code>http://localhost:5000/api/v1/auth/oauth/google</code></li>
+        <li>Expected: Sign in with Google → Receive JWT token from backend</li>
+    </ul>
+    
+    <script>
+        function handleCredentialResponse(response) {
+            console.log("Received Google credential");
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<p>Authenticating with backend...</p>';
+            
+            // Send token to backend
+            fetch('http://localhost:5000/api/v1/auth/oauth/google', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    token: response.credential
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log('Backend response:', data);
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <h3 class="success">✓ Authentication Successful!</h3>
+                        <p><strong>User:</strong> ${data.data.user.email}</p>
+                        <p><strong>Name:</strong> ${data.data.user.firstName} ${data.data.user.lastName}</p>
+                        <p><strong>Token:</strong> ${data.data.token.substring(0, 50)}...</p>
+                        <details>
+                            <summary>Full Response</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <h3 class="error">✗ Authentication Failed</h3>
+                        <p>${data.message}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <h3 class="error">✗ Network Error</h3>
+                    <p>${error.message}</p>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>

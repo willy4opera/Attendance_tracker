@@ -52,7 +52,7 @@ const sendWelcomeEmail = async (user) => {
   let verificationSection = "";
   let verificationText = "";
   if (user.emailVerificationToken) {
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${user.emailVerificationToken}`;
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${user.emailVerificationToken}`;
     const verificationCode = user.emailVerificationToken.slice(-6).toUpperCase();
     
     verificationSection = `
@@ -201,7 +201,7 @@ ${verificationSection}
 <table border="0" cellpadding="0" cellspacing="0" width="100%" class="mobile-button">
 <tr>
 <td align="center" style="background-color: #667eea; border-radius: 8px;">
-<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" target="_blank" style="display: inline-block; width: 100%; padding: 16px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px; box-sizing: border-box;">Access Your Dashboard →</a>
+<a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" target="_blank" style="display: inline-block; width: 100%; padding: 16px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px; box-sizing: border-box;">Access Your Dashboard →</a>
 </td>
 </tr>
 </table>
@@ -250,7 +250,7 @@ Your Account Information:
 - Full Name: ${user.firstName} ${user.lastName}
 - Account Role: ${user.role || 'User'}${verificationText}
 
-Access Your Dashboard: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login
+Access Your Dashboard: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/login
 
 Need help getting started?
 Contact us at ${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}
@@ -476,7 +476,7 @@ If you recognize this login, no action is needed. If not, please review your acc
 <table border="0" cellpadding="0" cellspacing="0" width="100%" class="mobile-button">
 <tr>
 <td align="center" style="background-color: #667eea; border-radius: 8px;">
-<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/account" target="_blank" style="display: inline-block; width: 100%; padding: 16px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px; box-sizing: border-box;">View Account Settings →</a>
+<a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/account" target="_blank" style="display: inline-block; width: 100%; padding: 16px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px; box-sizing: border-box;">View Account Settings →</a>
 </td>
 </tr>
 </table>
@@ -528,7 +528,7 @@ Login Details:
 Was this you?
 If you recognize this login, no action is needed. If not, please review your account security.
 
-View Account Settings: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/account
+View Account Settings: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/account
 
 Questions about this login? Contact us at ${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}
 
@@ -766,7 +766,7 @@ module.exports.sendSessionInvite = sendSessionInvite;
 // Send email verification
 const sendVerificationEmail = async (user, verificationToken) => {
   const timestamp = Date.now();
-  const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
+  const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${verificationToken}`;
   const verificationCode = verificationToken.slice(-6).toUpperCase(); // Last 6 characters as code
   
   const html = `<!DOCTYPE html>
@@ -933,7 +933,7 @@ Didn't request this email? You can safely ignore it.
 // Send verification success email
 const sendVerificationSuccessEmail = async (user) => {
   const timestamp = Date.now();
-  const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`;
+  const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`;
   
   const html = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">

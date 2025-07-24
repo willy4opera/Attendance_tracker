@@ -27,7 +27,7 @@ async function renderWelcomeEmail(user) {
       email: user.email,
       role: user.role || 'User',
       department: user.department,
-      loginUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`,
+      loginUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
       supportEmail: process.env.SUPPORT_EMAIL || 'support@changeambassadors.com',
       currentYear: new Date().getFullYear(),
       companyName: process.env.COMPANY_NAME || 'Change Ambassadors',

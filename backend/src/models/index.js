@@ -15,6 +15,7 @@ const TaskList = require('./taskList.model');
 const Task = require('./task.model');
 const TaskComment = require('./taskComment.model');
 const TaskActivity = require('./taskActivity.model');
+const TaskAssignmentNotification = require('./taskAssignmentNotificationSimple.model');
 const TaskAttachment = require('./taskAttachment.model');
 const BoardMember = require('./boardMember.model');
 const Label = require('./label.model');
@@ -23,6 +24,15 @@ const Label = require('./label.model');
 const CommentLike = require('./commentLike.model');
 const UserFollowing = require('./userFollowing.model');
 const TaskWatcher = require('./taskWatcher.model');
+
+// Import dependency models
+const TaskDependency = require('./taskDependency.model');
+const DependencyNotification = require('./dependencyNotification.model');
+const DependencyNotificationPreference = require('./dependencyNotificationPreference.model');
+const DependencyNotificationLog = require('./dependencyNotificationLog.model');
+const TaskCompletionLog = require('./taskCompletionLog.model');
+const Group = require('./group.model');
+const GroupMember = require('./groupMember.model');
 
 // User associations
 User.hasMany(Session, { foreignKey: 'facilitatorId', as: 'createdSessions' });
@@ -34,7 +44,25 @@ User.hasMany(Board, { foreignKey: 'createdBy', as: 'createdBoards' });
 User.hasMany(Task, { foreignKey: 'createdBy', as: 'createdTasks' });
 User.hasMany(TaskComment, { foreignKey: 'userId', as: 'comments' });
 User.hasMany(TaskActivity, { foreignKey: 'userId', as: 'activities' });
+User.hasMany(TaskCompletionLog, { foreignKey: 'userId', as: 'completionLogs' });
 User.belongsToMany(Board, { through: BoardMember, foreignKey: 'userId', as: 'boards' });
+User.hasMany(DependencyNotificationPreference, { foreignKey: 'userId', as: 'dependencyPreferences' });
+User.hasMany(DependencyNotificationLog, { foreignKey: 'userId', as: 'dependencyNotificationLogs' });
+
+// Group associations
+Group.belongsTo(User, { foreignKey: 'groupAdminId', as: 'groupAdmin' });
+Group.belongsToMany(User, { through: GroupMember, foreignKey: 'groupId', as: 'members' });
+Group.hasMany(GroupMember, { foreignKey: 'groupId', as: 'groupMemberships' });
+
+// GroupMember associations
+GroupMember.belongsTo(Group, { foreignKey: 'groupId', as: 'group' });
+GroupMember.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+GroupMember.belongsTo(User, { foreignKey: 'addedBy', as: 'addedByUser' });
+
+// User group associations
+User.hasMany(Group, { foreignKey: 'groupAdminId', as: 'adminGroups' });
+User.belongsToMany(Group, { through: GroupMember, foreignKey: 'userId', as: 'groups' });
+User.hasMany(GroupMember, { foreignKey: 'userId', as: 'groupMemberships' });
 
 // User social associations
 User.hasMany(CommentLike, { foreignKey: 'userId', as: 'commentLikes' });
@@ -65,6 +93,7 @@ Project.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
 Project.belongsTo(User, { foreignKey: 'projectManagerId', as: 'projectManager' });
 Project.belongsToMany(User, { through: UserProject, foreignKey: 'projectId', as: 'members' });
 Project.hasMany(Board, { foreignKey: 'projectId', as: 'boards' });
+Project.hasMany(DependencyNotificationPreference, { foreignKey: 'projectId', as: 'dependencyPreferences' });
 
 // Board associations
 Board.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
@@ -73,6 +102,7 @@ Board.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
 Board.hasMany(TaskList, { foreignKey: 'boardId', as: 'lists' });
 Board.belongsToMany(User, { through: BoardMember, foreignKey: 'boardId', as: 'members' });
 Board.hasMany(Label, { foreignKey: 'boardId', as: 'labels' });
+Board.hasMany(Task, { foreignKey: 'boardId', as: 'tasks' });
 
 // TaskList associations
 TaskList.belongsTo(Board, { foreignKey: 'boardId', as: 'board' });
@@ -81,10 +111,35 @@ TaskList.hasMany(Task, { foreignKey: 'taskListId', as: 'tasks' });
 // Task associations
 Task.belongsTo(TaskList, { foreignKey: 'taskListId', as: 'list' });
 Task.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+Task.belongsTo(Board, { foreignKey: 'boardId', as: 'board' });
 Task.hasMany(TaskComment, { foreignKey: 'taskId', as: 'comments' });
 Task.hasMany(TaskActivity, { foreignKey: 'taskId', as: 'activities' });
 Task.hasMany(TaskAttachment, { foreignKey: 'taskId', as: 'attachments' });
 Task.belongsToMany(User, { through: TaskWatcher, foreignKey: 'taskId', as: 'watchers' });
+
+// Task dependency associations
+Task.hasMany(TaskDependency, { foreignKey: 'predecessorTaskId', as: 'successorDependencies' });
+Task.hasMany(TaskCompletionLog, { foreignKey: 'taskId', as: 'completionLogs' });
+Task.hasMany(TaskDependency, { foreignKey: 'successorTaskId', as: 'predecessorDependencies' });
+
+// TaskDependency associations
+TaskDependency.belongsTo(Task, { foreignKey: 'predecessorTaskId', as: 'predecessorTask' });
+TaskDependency.belongsTo(Task, { foreignKey: 'successorTaskId', as: 'successorTask' });
+TaskDependency.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+TaskDependency.belongsTo(User, { foreignKey: 'updatedBy', as: 'updater' });
+TaskDependency.hasMany(DependencyNotification, { foreignKey: 'dependencyId', as: 'notifications' });
+
+// DependencyNotification associations
+DependencyNotification.belongsTo(TaskDependency, { foreignKey: 'dependencyId', as: 'dependency' });
+DependencyNotification.hasMany(DependencyNotificationLog, { foreignKey: 'notificationId', as: 'logs' });
+
+// DependencyNotificationPreference associations
+DependencyNotificationPreference.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+DependencyNotificationPreference.belongsTo(Project, { foreignKey: 'projectId', as: 'project' });
+
+// DependencyNotificationLog associations
+DependencyNotificationLog.belongsTo(DependencyNotification, { foreignKey: 'notificationId', as: 'notification' });
+DependencyNotificationLog.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // TaskComment associations
 TaskComment.belongsTo(Task, { foreignKey: 'taskId', as: 'task' });
@@ -97,6 +152,10 @@ TaskComment.hasMany(CommentLike, { foreignKey: 'commentId', as: 'likes' });
 TaskActivity.belongsTo(Task, { foreignKey: 'taskId', as: 'task' });
 TaskActivity.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 TaskActivity.belongsTo(Board, { foreignKey: 'boardId', as: 'board' });
+
+// TaskAssignmentNotification associations
+TaskAssignmentNotification.belongsTo(Task, { foreignKey: 'taskId', as: 'task' });
+Task.hasMany(TaskAssignmentNotification, { foreignKey: 'taskId', as: 'assignmentNotifications' });
 
 // TaskAttachment associations
 TaskAttachment.belongsTo(Task, { foreignKey: 'taskId', as: 'task' });
@@ -124,6 +183,7 @@ TaskWatcher.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // Session associations (existing)
 Session.hasMany(Attendance, { foreignKey: 'sessionId', as: 'attendances' });
+Session.belongsTo(User, { foreignKey: 'facilitatorId', as: 'facilitator' });
 Session.hasMany(Attachment, { foreignKey: 'sessionId', as: 'attachments' });
 Session.belongsTo(RecurringSession, { foreignKey: 'recurringSessionId', as: 'recurringSession' });
 
@@ -158,10 +218,23 @@ module.exports = {
   Task,
   TaskComment,
   TaskActivity,
+  TaskAssignmentNotification,
   TaskAttachment,
   BoardMember,
   Label,
   CommentLike,
   UserFollowing,
-  TaskWatcher
+  TaskWatcher,
+  TaskDependency,
+  DependencyNotification,
+  DependencyNotificationPreference,
+  DependencyNotificationLog,
+  TaskCompletionLog,
+  Group,
+  GroupMember,
 };
+
+// TaskCompletionLog associations
+TaskCompletionLog.belongsTo(Task, { foreignKey: 'taskId', as: 'task' });
+TaskCompletionLog.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+

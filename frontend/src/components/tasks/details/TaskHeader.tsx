@@ -6,17 +6,23 @@ import {
   FaTrash, 
   FaCheck,
   FaCalendarAlt,
-  FaShare
+  FaShare,
+  FaCheckCircle,
+  FaTimes,
+  FaClock
 } from 'react-icons/fa';
 import type { Task } from '../../../types';
+import theme from '../../../config/theme';
 
 interface TaskHeaderProps {
   task: Task;
   taskId: string;
   isAdmin: boolean;
   onMarkCompleted: () => void;
+  onMarkUncompleted?: () => void;
   onDelete: () => void;
   onShare: () => void;
+  onEdit?: () => void;
 }
 
 const TaskHeader: React.FC<TaskHeaderProps> = ({
@@ -24,9 +30,23 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
   taskId,
   isAdmin,
   onMarkCompleted,
+  onMarkUncompleted,
   onDelete,
-  onShare
+  onShare,
+  onEdit
 }) => {
+  // Determine task status based on completedAt
+  const isCompleted = task.status === "done";
+  
+  // Format completion date/time
+  const formatCompletionDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return {
+      date: date.toLocaleDateString(),
+      time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+  };
+
   return (
     <div className="sticky top-0 z-50 bg-white border-b shadow-sm">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
@@ -39,9 +59,41 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
               <FaArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Link>
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 break-words">
-                {task.title}
-              </h1>
+              <div className="flex items-start gap-3 flex-wrap">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 break-words">
+                  {task.title}
+                </h1>
+                {/* Status Badge based on completedAt */}
+                <div className="flex items-center gap-2">
+                  {isCompleted ? (
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                      >
+                        <FaCheckCircle className="h-3 w-3" />
+                        <span>Completed</span>
+                      </div>
+                      {task.completedAt && (
+                        <div className="text-xs text-gray-500">
+                          <span className="hidden sm:inline">
+                            {formatCompletionDate(task.completedAt).date} at {formatCompletionDate(task.completedAt).time}
+                          </span>
+                          <span className="sm:hidden">
+                            {formatCompletionDate(task.completedAt).date}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div 
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                    >
+                      <FaClock className="h-3 w-3" />
+                      <span>In Progress</span>
+                    </div>
+                  )}
+                </div>
+              </div>
               <p className="text-sm sm:text-base text-gray-600 truncate">
                 in {task.list?.name} • {task.list?.board?.name}
               </p>
@@ -60,14 +112,36 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
           </div>
 
           <div className="flex items-center space-x-1 sm:space-x-2 w-full sm:w-auto justify-end">
-            {isAdmin && task.status !== 'done' && (
+            {/* Completion Button Logic */}
+            {isCompleted ? (
+              // Task is completed
+              isAdmin ? (
+                // Admin can mark as uncompleted
+                <button
+                  onClick={onMarkUncompleted || onEdit}
+                  className="flex items-center space-x-1 sm:space-x-2 bg-orange-600 text-white px-2 sm:px-3 md:px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-xs sm:text-sm"
+                  title="Mark as uncompleted and add comment"
+                >
+                  <FaTimes className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Mark as Uncompleted</span>
+                  <span className="sm:hidden">Reopen</span>
+                </button>
+              ) : (
+                // Regular user sees disabled completed button
+                <div className="flex items-center space-x-1 sm:space-x-2 bg-gray-200 text-gray-600 px-2 sm:px-3 md:px-4 py-2 rounded-lg text-xs sm:text-sm cursor-not-allowed">
+                  <FaCheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span>Completed</span>
+                </div>
+              )
+            ) : (
+              // Task is not completed - anyone can mark as completed
               <button
                 onClick={onMarkCompleted}
                 className="flex items-center space-x-1 sm:space-x-2 bg-green-600 text-white px-2 sm:px-3 md:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm"
               >
                 <FaCheck className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Mark as Completed</span>
-                <span className="sm:hidden">Done</span>
+                <span className="sm:hidden">Complete</span>
               </button>
             )}
             
@@ -79,13 +153,15 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
               <FaShare className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
             
-            <Link
-              to={`/tasks/${taskId}/edit`}
+            {onEdit && (
+              <button
+              onClick={onEdit}
               className="text-gray-500 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 min-w-[40px] min-h-[40px] flex items-center justify-center"
               title="Edit"
             >
               <FaEdit className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Link>
+            </button>
+            )}
             
             {isAdmin && (
               <button

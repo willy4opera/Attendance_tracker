@@ -1,27 +1,97 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { FaArrowLeft, FaCog, FaHistory, FaUsers } from 'react-icons/fa';
-import { useBoard } from '../../hooks/useBoards';
+import { useBoard, useBoards } from '../../hooks/useBoards';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
-import KanbanBoard from '../../components/boards/KanbanBoard';
-import BoardActivityPanel from '../../components/boards/BoardActivityPanel';
-import NotificationBell from '../../components/notifications/NotificationBell';
+import {
+  BoardViewHeader,
+  BoardViewMainContent,
+  BoardViewControls,
+  compressImage,
+  validateImageSize
+} from '../../components/boards/BoardView';
+import EditBoardModal from '../../components/boards/EditBoardModal';
+import type { Board } from '../../types';
+import theme from '../../config/theme';
 
 const BoardView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const boardId = parseInt(id || '0');
+  const { board, loading, error, refetch } = useBoard(boardId);
   const [showActivity, setShowActivity] = useState(false);
-  
-  const { board, loading, error } = useBoard(boardId);
+  const [editingBoard, setEditingBoard] = useState<Board | null>(null);
+  const [isEditingHeader, setIsEditingHeader] = useState(false);
+  const [headerTitle, setHeaderTitle] = useState('');
+  const [headerImage, setHeaderImage] = useState<string | null>(null);
+  const { updateBoard } = useBoards();
 
   // Enable real-time updates for this board
   useRealTimeUpdates({ boardId, enabled: true });
 
+  const handleEdit = () => {
+    if (board) {
+      setEditingBoard(board);
+    }
+  };
+
+  const handleSaveEdit = async (id: string | number, data: any) => {
+    const result = await updateBoard(id, data);
+    if (result) {
+      setEditingBoard(null);
+      refetch(); // Refresh the board view after editing
+    }
+    return result;
+  };
+
+  const handleEditHeader = () => {
+    if (board) {
+      setHeaderTitle(board.name);
+      setHeaderImage(board.backgroundImage || null);
+      setIsEditingHeader(true);
+    }
+  };
+
+  const handleSaveHeader = async () => {
+    if (board) {
+      await updateBoard(board.id, {
+        name: headerTitle,
+        backgroundImage: headerImage
+      });
+      setIsEditingHeader(false);
+      refetch();
+    }
+  };
+
+  const handleCancelHeader = () => {
+    setIsEditingHeader(false);
+    setHeaderTitle('');
+    setHeaderImage(null);
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      try {
+        // Check file size (limit to 5MB)
+        if (!validateImageSize(file, 5)) {
+          alert('Image size should be less than 5MB');
+          return;
+        }
+        
+        // Compress image before setting
+        const compressedImage = await compressImage(file, 1200, 800, 0.85);
+        setHeaderImage(compressedImage);
+      } catch (error) {
+        console.error('Error processing image:', error);
+        alert('Error processing image. Please try a different image.');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        <span className="ml-2 text-gray-600">Loading board...</span>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: theme.colors.primary }}></div>
+        <span className="ml-2" style={{ color: theme.colors.text.secondary }}>Loading board...</span>
       </div>
     );
   }
@@ -30,7 +100,7 @@ const BoardView: React.FC = () => {
     return (
       <div className="p-4 text-red-600 bg-red-50 rounded-lg">
         Error loading board: {error || 'Board not found'}
-        <Link to="/boards" className="ml-2 text-blue-600 hover:underline">
+        <Link to="/boards" className="ml-2 hover:underline" style={{ color: theme.colors.primary }}>
           Back to Boards
         </Link>
       </div>
@@ -38,63 +108,61 @@ const BoardView: React.FC = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Link 
-            to="/boards"
-            className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100"
-          >
-            <FaArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">{board.name}</h1>
-            {board.description && (
-              <p className="text-sm text-gray-600">{board.description}</p>
-            )}
-          </div>
-        </div>
+    <div style={{ 
+      display: 'flex',
+      flexDirection: 'column',
+      height: 'calc(100vh - 64px)', // Adjust for header height
+      width: '100%',
+      position: 'relative'
+    }}>
+      {/* Fixed Header */}
+      <div style={{ flexShrink: 0 }}>
+        <BoardViewHeader
+          board={board}
+          onEditHeader={handleEditHeader}
+          onEdit={handleEdit}
+          isEditingHeader={isEditingHeader}
+          headerTitle={headerTitle}
+          headerImage={headerImage}
+          setHeaderTitle={setHeaderTitle}
+          handleSaveHeader={handleSaveHeader}
+          handleCancelHeader={handleCancelHeader}
+          handleImageUpload={handleImageUpload}
+        />
 
-        <div className="flex items-center space-x-4">
-          <NotificationBell />
-          
-          <button
-            onClick={() => setShowActivity(!showActivity)}
-            className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100"
-            title="Board Activity"
-          >
-            <FaHistory className="h-5 w-5" />
-          </button>
-
-          <Link
-            to={`/boards/${boardId}/settings`}
-            className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100"
-            title="Board Settings"
-          >
-            <FaCog className="h-5 w-5" />
-          </Link>
-
-          <button className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100">
-            <FaUsers className="h-5 w-5" />
-          </button>
+        {/* Fixed Controls */}
+        <div className="px-6 py-2 border-b" style={{ backgroundColor: theme.colors.background.paper }}>
+          <BoardViewControls
+            boardId={board.id}
+            showActivity={showActivity}
+            onToggleActivity={() => setShowActivity(!showActivity)}
+          />
         </div>
       </div>
 
-      {/* Board Content */}
-      <div className="flex-1 overflow-hidden">
-        <KanbanBoard 
-          boardId={boardId}
+      {/* Main Content with proper overflow handling */}
+      <div style={{ 
+        flex: 1,
+        overflow: 'hidden',
+        position: 'relative',
+        width: '100%'
+      }}>
+        <BoardViewMainContent
+          boardId={board.id}
           boardName={board.name}
+          showActivity={showActivity}
         />
       </div>
 
-      {/* Activity Panel */}
-      <BoardActivityPanel
-        boardId={boardId}
-        isOpen={showActivity}
-        onToggle={() => setShowActivity(!showActivity)}
-      />
+      {/* Edit Board Modal */}
+      {editingBoard && (
+        <EditBoardModal
+          board={editingBoard}
+          isOpen={!!editingBoard}
+          onClose={() => setEditingBoard(null)}
+          onSave={handleSaveEdit}
+        />
+      )}
     </div>
   );
 };

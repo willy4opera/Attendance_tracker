@@ -1,76 +1,55 @@
 import api from './api';
-import { AxiosError } from 'axios';
-
-export interface SessionFilters {
-  search: string;
-  status: string;
-  page: number;
-  limit: number;
-}
-
-export interface Session {
-  id: string;
-  _id?: string; // MongoDB ID
-  title: string;
-  name?: string; // Alternative name field
-  description?: string;
-  sessionDate: string;
-  startTime: string;
-  endTime: string;
-  facilitatorId: string;
-  facilitator?: {
-    id: string;
-    _id?: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-  maxAttendees?: number;
-  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
-  meetingType: 'in-person' | 'online' | 'hybrid';
-  meetingLink?: string;
-  location?: string;
-  trackingEnabled: boolean;
-  attendanceWindow?: number;
-  createdAt: string;
-  updatedAt: string;
-  enrolledCount?: number;
-  capacity?: number;
-  attendanceCount?: number;
-}
-
-export interface SessionsResponse {
-  sessions: Session[];
-  pagination: {
-    page: number;
-    limit: number;
-    totalPages: number;
-    totalResults: number;
-  };
-}
+import type { AxiosError } from 'axios';
+import type { 
+  Session, 
+  SessionsResponse, 
+  SessionFilters, 
+  CreateSessionData, 
+  UpdateSessionData,
+  UserOption
+} from '../types/session';
 
 class SessionService {
-  // Get all sessions with optional filters
-  async getAllSessions(params?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    status?: string;
-    startDate?: string;
-    endDate?: string;
-  }): Promise<SessionsResponse> {
+  // Get all sessions with filters
+  async getAllSessions(filters?: SessionFilters): Promise<SessionsResponse> {
     try {
-      const response = await api.get('/sessions', { params });
-      return response.data.data;
+      const params = new URLSearchParams();
+      
+      if (filters?.page) params.append('page', filters.page.toString());
+      if (filters?.limit) params.append('limit', filters.limit.toString());
+      if (filters?.search) params.append('search', filters.search);
+      if (filters?.status && filters.status !== 'all') params.append('status', filters.status);
+      if (filters?.startDate) params.append('startDate', filters.startDate);
+      if (filters?.endDate) params.append('endDate', filters.endDate);
+      
+      const response = await api.get(`/sessions?${params.toString()}`);
+      return response.data;
     } catch (error) {
       const axiosError = error as AxiosError<{ message: string }>;
       throw new Error(axiosError.response?.data?.message || 'Failed to fetch sessions');
     }
   }
 
-  // Create a new session
-  async createSession(sessionData: Partial<Session>): Promise<Session> {
+  // Get single session by ID
+  async getSessionById(id: string): Promise<Session> {
     try {
+      const response = await api.get(`/sessions/${id}`);
+      return response.data.data.session;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message: string }>;
+      throw new Error(axiosError.response?.data?.message || 'Failed to fetch session');
+    }
+  }
+
+  // Create new session
+  async createSession(data: CreateSessionData): Promise<Session> {
+    try {
+      // Automatically calculate expectedAttendeesCount if expectedAttendees is provided
+      const sessionData = {
+        ...data,
+        expectedAttendeesCount: data.expectedAttendees?.length || 0
+      };
+      
       const response = await api.post('/sessions', sessionData);
       return response.data.data.session;
     } catch (error) {
@@ -79,10 +58,20 @@ class SessionService {
     }
   }
 
-  // Update a session
-  async updateSession(sessionId: string, sessionData: Partial<Session>): Promise<Session> {
+  // Update session
+  async updateSession(data: UpdateSessionData): Promise<Session> {
     try {
-      const response = await api.put(`/sessions/${sessionId}`, sessionData);
+      const { id, ...updateData } = data;
+      
+      // Automatically calculate expectedAttendeesCount if expectedAttendees is provided
+      const sessionData = {
+        ...updateData,
+        ...(updateData.expectedAttendees && {
+          expectedAttendeesCount: updateData.expectedAttendees.length
+        })
+      };
+      
+      const response = await api.patch(`/sessions/${id}`, sessionData);
       return response.data.data.session;
     } catch (error) {
       const axiosError = error as AxiosError<{ message: string }>;
@@ -90,58 +79,174 @@ class SessionService {
     }
   }
 
-  // Delete a session
-  async deleteSession(sessionId: string): Promise<void> {
+  // Delete session
+  async deleteSession(id: string): Promise<void> {
     try {
-      await api.delete(`/sessions/${sessionId}`);
+      await api.delete(`/sessions/${id}`);
     } catch (error) {
       const axiosError = error as AxiosError<{ message: string }>;
       throw new Error(axiosError.response?.data?.message || 'Failed to delete session');
     }
   }
 
-  // Get session by ID
-  async getSessionById(sessionId: string): Promise<Session> {
+  // Get users for expected attendees selection
+  async getUsersForSelection(search?: string): Promise<UserOption[]> {
     try {
-      const response = await api.get(`/sessions/${sessionId}`);
-      return response.data.data.session;
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      params.append('limit', '50'); // Reasonable limit for dropdown
+      
+      const response = await api.get(`/users?${params.toString()}`);
+      const users = response.data.data.users || response.data.data || response.data.users || [];
+      
+      return users.map((user: any) => ({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        name: `${user.firstName} ${user.lastName}`
+      }));
     } catch (error) {
       const axiosError = error as AxiosError<{ message: string }>;
-      throw new Error(axiosError.response?.data?.message || 'Failed to fetch session');
+      throw new Error(axiosError.response?.data?.message || 'Failed to fetch users');
+    }
+  }
+
+  // Get session status
+  getSessionStatus(session: Session): 'scheduled' | 'ongoing' | 'completed' | 'cancelled' {
+    if (session.status === 'cancelled') return 'cancelled';
+    
+    const now = new Date();
+    const sessionDate = new Date(session.sessionDate);
+    const startTime = new Date(`${session.sessionDate}T${session.startTime}`);
+    const endTime = new Date(`${session.sessionDate}T${session.endTime}`);
+
+    if (now >= startTime && now <= endTime) {
+      return 'ongoing';
+    } else if (now < startTime) {
+      return 'scheduled';
+    } else {
+      return 'completed';
     }
   }
 
   // Format session time for display
   formatSessionTime(session: Session): string {
-    const date = new Date(session.sessionDate);
-    const dateStr = date.toLocaleDateString();
-    return `${dateStr} ${session.startTime} - ${session.endTime}`;
+    if (!session.sessionDate || !session.startTime) return "Time not set";
+    
+    const sessionDate = new Date(session.sessionDate);
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    };
+    
+    const dateStr = sessionDate.toLocaleDateString("en-US", options);
+    const startTime = this.formatTime(session.startTime);
+    const endTime = session.endTime ? ` - ${this.formatTime(session.endTime)}` : "";
+    
+    return `${dateStr}, ${startTime}${endTime}`;
   }
 
-  // Get session status based on current time
-  getSessionStatus(session: Session): 'active' | 'upcoming' | 'past' {
-    const now = new Date();
-    const sessionDate = new Date(session.sessionDate);
-    const startTime = new Date(`${session.sessionDate.split('T')[0]}T${session.startTime}`);
-    const endTime = new Date(`${session.sessionDate.split('T')[0]}T${session.endTime}`);
-
-    if (now >= startTime && now <= endTime) {
-      return 'active';
-    } else if (now < startTime) {
-      return 'upcoming';
-    } else {
-      return 'past';
+  // Helper to format time string
+  private formatTime(timeStr: string): string {
+    if (!timeStr) return "";
+    
+    try {
+      const [hours, minutes] = timeStr.split(":");
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? "PM" : "AM";
+      const displayHour = hour % 12 || 12;
+      return `${displayHour}:${minutes} ${ampm}`;
+    } catch {
+      return timeStr;
     }
   }
 
-  // Generate QR code for a session
-  async generateSessionQR(sessionId: string): Promise<{ qrCode: { dataURL: string; url: string; expiresAt: string } }> {
+  // Get attendance rate for a session
+  getAttendanceRate(session: Session): number {
+    if (session.expectedAttendeesCount && session.expectedAttendeesCount > 0) {
+      // Use expected count if available
+      const actualAttendance = session.attendances?.filter(a => 
+        a.status === 'present' || a.status === 'late'
+      ).length || 0;
+      return Math.round((actualAttendance / session.expectedAttendeesCount) * 100);
+    } else if (session.attendances && session.attendances.length > 0) {
+      // Fall back to actual attendance records
+      const attended = session.attendances.filter(a => 
+        a.status === 'present' || a.status === 'late'
+      ).length;
+      return Math.round((attended / session.attendances.length) * 100);
+    }
+    return 0;
+  }
+
+  // Get session attendance link
+  async getAttendanceLink(sessionId: string): Promise<string> {
     try {
-      const response = await api.post(`/qrcode/sessions/${sessionId}`);
+      const response = await api.get(`/attendance/sessions/${sessionId}/attendance-link`);
+      return response.data.data.attendanceUrl;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message: string }>;
+      throw new Error(axiosError.response?.data?.message || 'Failed to generate attendance link');
+    }
+  }
+
+  // Add files to session
+  async addFilesToSession(sessionId: number | string, files: any[]): Promise<any> {
+    try {
+      const response = await api.post(`/sessions/${sessionId}/files`, {
+        files: files
+      });
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message: string }>;
+      throw new Error(axiosError.response?.data?.message || 'Failed to upload files');
+    }
+  }
+
+  // Remove file from session
+  async removeFileFromSession(sessionId: number, fileId: number): Promise<void> {
+    try {
+      await api.delete(`/sessions/${sessionId}/files/${fileId}`);
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message: string }>;
+      throw new Error(axiosError.response?.data?.message || 'Failed to remove file');
+    }
+  }
+
+  // Get session statistics
+  async getSessionStats(): Promise<any> {
+    try {
+      const response = await api.get("/sessions/stats");
       return response.data.data;
     } catch (error) {
       const axiosError = error as AxiosError<{ message: string }>;
-      throw new Error(axiosError.response?.data?.message || 'Failed to generate QR code');
+      throw new Error(axiosError.response?.data?.message || "Failed to fetch session stats");
+    }
+  }
+
+  // Get filtered sessions
+  async getFilteredSessions(filter: string, filters?: any): Promise<any> {
+    try {
+      const params = new URLSearchParams();
+      
+      // Add filter type
+      if (filter !== "all") {
+        params.append("status", filter);
+      }
+      
+      // Add other filters
+      if (filters?.page) params.append("page", filters.page.toString());
+      if (filters?.limit) params.append("limit", filters.limit.toString());
+      if (filters?.search) params.append("search", filters.search);
+      
+      const response = await api.get(`/sessions?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message: string }>;
+      throw new Error(axiosError.response?.data?.message || "Failed to fetch filtered sessions");
     }
   }
 }

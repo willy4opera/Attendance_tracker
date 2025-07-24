@@ -108,6 +108,7 @@ class CommentService {
   // Share a comment
   async shareComment(data: ShareCommentData): Promise<ApiResponse<void>> {
     const response = await api.post('/comments/share', data);
+    console.log('[CommentService] createComment response:', response.data);
     return response.data;
   }
 

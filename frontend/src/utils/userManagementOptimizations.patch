@@ -1,0 +1,92 @@
+--- a/src/pages/users/UserManagement.tsx
++++ b/src/pages/users/UserManagement.tsx
+@@ -82,6 +82,10 @@
+     isEmailVerified: ''
+   })
+ 
++  // Add debounced search
++  const debouncedSearchQuery = useDebounce(searchQuery, 500);
++  const fetchUsersInProgress = useRef(false);
++
+   // Check if mobile
+   useEffect(() => {
+     const checkIsMobile = () => {
+@@ -97,11 +101,16 @@
+   const fetchDepartments = useCallback(async () => {
+     try {
+       setDepartmentsLoading(true)
+-      const response = await departmentService.getAllDepartments({
+-        isActive: true,
+-        limit: 1000 // Get all departments
+-      })
+-      setDepartments(response.departments)
++      const departments = await cachedRequest(
++        'user-management-departments',
++        async () => {
++          const response = await departmentService.getAllDepartments({
++            isActive: true,
++            limit: 1000
++          })
++          return response.departments
++        },
++        5 * 60 * 1000 // Cache for 5 minutes
++      )
++      setDepartments(departments)
+     } catch (error) {
+       notify.toast.error('Failed to fetch departments')
+@@ -113,6 +122,11 @@
+   // Fetch users
+   const fetchUsers = useCallback(async () => {
++    if (fetchUsersInProgress.current) {
++      console.log('Fetch already in progress, skipping...')
++      return
++    }
++    fetchUsersInProgress.current = true
+     try {
+       setLoading(true)
+       const params = new URLSearchParams({
+@@ -129,7 +143,12 @@
+       if (filters.isEmailVerified) params.append('isEmailVerified', filters.isEmailVerified)
+ 
+-      const response = await api.get(`/users?${params}`)
++      const response = await requestDeduplicator.deduplicate(
++        `users-${params.toString()}`,
++        () => api.get(`/users?${params}`)
++      )
+       
+       setUsers(response.data.data || [])
+       setTotalPages(response.data.pagination?.totalPages || 1)
+@@ -140,21 +159,29 @@
+       notify.toast.error(error.response?.data?.message || 'Failed to fetch users')
+     } finally {
+       setLoading(false)
++      fetchUsersInProgress.current = false
+     }
+   }, [currentPage, filters])
+ 
++  // Initial load
+   useEffect(() => {
+-    fetchDepartments()
+-  }, [fetchDepartments])
++    let mounted = true;
++    if (mounted) {
++      fetchDepartments()
++    }
++    return () => { mounted = false; }
++  }, [])
+ 
++  // Handle search with debounce
+   useEffect(() => {
+-    fetchUsers()
+-  }, [fetchUsers])
++    if (debouncedSearchQuery !== undefined) {
++      setCurrentPage(1)
++      fetchUsers()
++    }
++  }, [debouncedSearchQuery, fetchUsers])
+ 
+   const handleSearch = (e: React.FormEvent) => {
+     e.preventDefault()
+-    setCurrentPage(1)
+-    fetchUsers()
+   }

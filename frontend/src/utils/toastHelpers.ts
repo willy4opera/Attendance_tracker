@@ -1,5 +1,6 @@
 import toast from 'react-hot-toast'
 import theme from '../config/theme'
+import { isInPopup } from './isInPopup'
 
 export const toastDefaultOptions = {
   duration: 4000,
@@ -12,6 +13,12 @@ export const toastDefaultOptions = {
 }
 
 export const toastSuccess = (message: string, options?: Record<string, unknown>) => {
+  // Don't show toast in popup windows
+  if (isInPopup()) {
+    console.log('[Toast] Success (suppressed in popup):', message);
+    return;
+  }
+  
   toast.success(message, {
     ...toastDefaultOptions,
     ...options,
@@ -28,6 +35,12 @@ export const toastSuccess = (message: string, options?: Record<string, unknown>)
 }
 
 export const toastError = (message: string, options?: Record<string, unknown>) => {
+  // Don't show toast in popup windows
+  if (isInPopup()) {
+    console.log('[Toast] Error (suppressed in popup):', message);
+    return;
+  }
+  
   toast.error(message, {
     ...toastDefaultOptions,
     ...options,
@@ -45,6 +58,12 @@ export const toastError = (message: string, options?: Record<string, unknown>) =
 }
 
 export const toastWarning = (message: string, options?: Record<string, unknown>) => {
+  // Don't show toast in popup windows
+  if (isInPopup()) {
+    console.log('[Toast] Warning (suppressed in popup):', message);
+    return;
+  }
+  
   toast(message, {
     ...toastDefaultOptions,
     ...options,
@@ -58,6 +77,12 @@ export const toastWarning = (message: string, options?: Record<string, unknown>)
 }
 
 export const toastInfo = (message: string, options?: Record<string, unknown>) => {
+  // Don't show toast in popup windows
+  if (isInPopup()) {
+    console.log('[Toast] Info (suppressed in popup):', message);
+    return;
+  }
+  
   toast(message, {
     ...toastDefaultOptions,
     ...options,
@@ -71,6 +96,12 @@ export const toastInfo = (message: string, options?: Record<string, unknown>) =>
 }
 
 export const toastLoading = (message: string, options?: Record<string, unknown>) => {
+  // Don't show toast in popup windows
+  if (isInPopup()) {
+    console.log('[Toast] Loading (suppressed in popup):', message);
+    return null;
+  }
+  
   return toast.loading(message, {
     ...toastDefaultOptions,
     ...options,
@@ -91,6 +122,12 @@ export const toastPromise = <T,>(
   },
   options?: Record<string, unknown>
 ) => {
+  // Don't show toast in popup windows
+  if (isInPopup()) {
+    console.log('[Toast] Promise (suppressed in popup):', messages);
+    return promise;
+  }
+  
   return toast.promise(
     promise,
     messages,
@@ -131,6 +168,11 @@ export const toastPromise = <T,>(
 }
 
 export const dismissToast = (toastId?: string) => {
+  // Don't try to dismiss if in popup (nothing to dismiss)
+  if (isInPopup()) {
+    return;
+  }
+  
   if (toastId) {
     toast.dismiss(toastId)
   } else {
@@ -146,4 +188,3 @@ export const showInfoToast = toastInfo
 
 // Generic toast function for backward compatibility
 export const showToast = toastInfo
-

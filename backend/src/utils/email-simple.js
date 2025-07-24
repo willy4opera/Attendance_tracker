@@ -157,7 +157,7 @@ const sendWelcomeEmail = async (user) => {
     </div>
     
     <div style="text-align: center; margin: 40px 0;">
-        <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" 
+        <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" 
            style="display: inline-block; padding: 14px 30px; background-color: #007bff; color: #ffffff; 
                   text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
             Log In to Your Account
@@ -183,7 +183,7 @@ const sendWelcomeEmail = async (user) => {
     to: user.email,
     subject: 'Welcome to Change Ambassadors - Attendance Tracker',
     html,
-    text: `Welcome ${user.firstName}! Your account has been successfully created. You can now log in at ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`
+    text: `Welcome ${user.firstName}! Your account has been successfully created. You can now log in at ${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`
   });
 };
 

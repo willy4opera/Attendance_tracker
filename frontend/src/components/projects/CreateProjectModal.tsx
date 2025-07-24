@@ -169,7 +169,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                   style={{ 
-                    '--tw-ring-color': theme.colors.primary,
+                    borderColor: theme.colors.primary + '40',
                     focusRingColor: theme.colors.primary 
                   } as any}
                   placeholder="Enter project name"
@@ -190,7 +190,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   maxLength={20}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                   style={{ 
-                    '--tw-ring-color': theme.colors.primary,
+                    borderColor: theme.colors.primary + '40',
                     focusRingColor: theme.colors.primary 
                   } as any}
                   placeholder="Enter project code (max 20 chars)"
@@ -208,7 +208,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                   style={{ 
-                    '--tw-ring-color': theme.colors.primary,
+                    borderColor: theme.colors.primary + '40',
                     focusRingColor: theme.colors.primary 
                   } as any}
                 >
@@ -231,7 +231,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                   style={{ 
-                    '--tw-ring-color': theme.colors.primary,
+                    borderColor: theme.colors.primary + '40',
                     focusRingColor: theme.colors.primary 
                   } as any}
                 >
@@ -253,7 +253,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                   style={{ 
-                    '--tw-ring-color': theme.colors.primary,
+                    borderColor: theme.colors.primary + '40',
                     focusRingColor: theme.colors.primary 
                   } as any}
                 >
@@ -290,7 +290,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                   style={{ 
-                    '--tw-ring-color': theme.colors.primary,
+                    borderColor: theme.colors.primary + '40',
                     focusRingColor: theme.colors.primary 
                   } as any}
                 />
@@ -308,7 +308,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                   style={{ 
-                    '--tw-ring-color': theme.colors.primary,
+                    borderColor: theme.colors.primary + '40',
                     focusRingColor: theme.colors.primary 
                   } as any}
                 />
@@ -328,7 +328,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   min="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent"
                   style={{ 
-                    '--tw-ring-color': theme.colors.primary,
+                    borderColor: theme.colors.primary + '40',
                     focusRingColor: theme.colors.primary 
                   } as any}
                   placeholder="Enter budget amount"
@@ -347,7 +347,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                   rows={8}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent resize-none"
                   style={{ 
-                    '--tw-ring-color': theme.colors.primary,
+                    borderColor: theme.colors.primary + '40',
                     focusRingColor: theme.colors.primary 
                   } as any}
                   placeholder="Enter project description..."
@@ -362,7 +362,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               type="button"
               onClick={onClose}
               className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
-              style={{ '--tw-ring-color': theme.colors.primary } as any}
+              style={{ borderColor: theme.colors.primary + '40' } as any}
             >
               Cancel
             </button>
@@ -373,7 +373,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               style={{ 
                 backgroundColor: theme.colors.primary, 
                 color: theme.colors.secondary,
-                '--tw-ring-color': theme.colors.primary
+                borderColor: theme.colors.primary + '40'
               } as any}
             >
               {isSubmitting ? 'Creating...' : 'Create Project'}

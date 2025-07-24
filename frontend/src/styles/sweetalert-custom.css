@@ -1,0 +1,101 @@
+/* Custom SweetAlert2 Styling to match brand */
+.swal2-popup {
+  border-radius: 1rem !important;
+  font-family: inherit !important;
+}
+
+.swal2-title {
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+.swal2-html-container {
+  color: #000000 !important;
+}
+
+.swal2-confirm {
+  background-color: #000000 !important;
+  color: #fddc9a !important;
+  border-radius: 0.75rem !important;
+  padding: 0.75rem 1.5rem !important;
+  font-weight: 600 !important;
+  transition: all 0.2s !important;
+  border: 2px solid #000000 !important;
+}
+
+.swal2-confirm:hover {
+  background-color: #fddc9a !important;
+  color: #000000 !important;
+  border-color: #fddc9a !important;
+  transform: scale(1.05) !important;
+}
+
+.swal2-cancel {
+  background-color: transparent !important;
+  color: #000000 !important;
+  border: 2px solid #fddc9a !important;
+  border-radius: 0.75rem !important;
+  padding: 0.75rem 1.5rem !important;
+  font-weight: 600 !important;
+  transition: all 0.2s !important;
+}
+
+.swal2-cancel:hover {
+  background-color: #fddc9a !important;
+  color: #000000 !important;
+}
+
+.swal2-icon.swal2-success {
+  border-color: #fddc9a !important;
+  color: #fddc9a !important;
+}
+
+.swal2-icon.swal2-success [class^=swal2-success-line] {
+  background-color: #fddc9a !important;
+}
+
+.swal2-icon.swal2-success .swal2-success-ring {
+  border-color: #fddc9a30 !important;
+}
+
+.swal2-icon.swal2-error {
+  border-color: #ef4444 !important;
+}
+
+.swal2-icon.swal2-warning {
+  border-color: #f59e0b !important;
+  color: #f59e0b !important;
+}
+
+.swal2-icon.swal2-info {
+  border-color: #3b82f6 !important;
+  color: #3b82f6 !important;
+}
+
+.swal2-icon.swal2-question {
+  border-color: #fddc9a !important;
+  color: #fddc9a !important;
+}
+
+/* Loading spinner */
+.swal2-loader {
+  border-color: #fddc9a transparent #fddc9a transparent !important;
+}
+
+/* Input styling */
+.swal2-input {
+  border: 2px solid #fddc9a !important;
+  border-radius: 0.75rem !important;
+  background-color: #d9d9d9 !important;
+  color: #000000 !important;
+}
+
+.swal2-input:focus {
+  border-color: #fddc9a !important;
+  box-shadow: 0 0 0 3px #fddc9a30 !important;
+}
+
+/* Timer progress bar */
+.swal2-timer-progress-bar {
+  background: #fddc9a !important;
+}

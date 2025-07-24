@@ -1,4 +1,5 @@
 const express = require('express');
+const projectMembersController = require("../controllers/projectMembers.controller");
 const router = express.Router();
 const projectController = require('../controllers/project.controller');
 const { protect, restrictTo } = require('../middleware/auth');
@@ -85,5 +86,12 @@ router.delete('/:id',
   validateRequest,
   projectController.delete
 );
+
+
+// Add this route to your project routes
+
+
+// Get project task members
+router.get("/:projectId/task-members", protect, projectMembersController.getProjectTaskMembers);
 
 module.exports = router;

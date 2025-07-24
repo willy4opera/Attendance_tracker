@@ -1,5 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useProjects } from '../../hooks/useProjects'
+import { useProjectStatistics } from '../../hooks/useProjectStatistics'
+import { ProjectStatisticsWidget } from '../../components/projects/ProjectStatisticsWidget'
 import { ProjectCard } from '../../components/projects/ProjectCard'
 import { ProjectFilters } from '../../components/projects/ProjectFilters'
 import { CreateProjectModal } from '../../components/projects/CreateProjectModal'
@@ -7,15 +9,21 @@ import { ProjectWorkflowDemo } from '../../components/projects/ProjectWorkflowDe
 import { ProjectStatus, ProjectPriority } from '../../types'
 import { 
   PlusIcon, 
-  ViewColumnsIcon, 
-  ListBulletIcon,
-  MagnifyingGlassIcon,
-  ChevronDownIcon,
-  ChevronUpIcon
+  ChartBarIcon, 
+  FolderIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  ArrowTrendingUpIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline'
+import ViewToggle from '../../components/common/ViewToggle'
 import theme from '../../config/theme'
 
-export const ProjectList: React.FC = () => {
+export default function ProjectList() {
+  const { projects: rawProjects, loading: projectsLoading, error, createProject } = useProjects()
+  const { statistics, loading: statsLoading } = useProjectStatistics()
+  
+  // State management
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | ''>('')
   const [priorityFilter, setPriorityFilter] = useState<ProjectPriority | ''>('')
@@ -24,305 +32,319 @@ export const ProjectList: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [showWorkflow, setShowWorkflow] = useState(false)
+  
+  const itemsPerPage = 9
 
-  const {
-    projects = [],
-    loading,
-    error,
-    total,
-    totalPages,
-    refreshProjects
-  } = useProjects({
-    page: currentPage,
-    limit: 12,
-    search: searchTerm,
-    status: statusFilter,
-    departmentId: departmentFilter
+  // Merge projects with real statistics
+  const projects = rawProjects.map(project => {
+    const projectStats = statistics?.projectLevelStats.find(stat => stat.project_id === project.id)
+    return {
+      ...project,
+      stats: projectStats ? {
+        boardCount: parseInt(projectStats.board_count),
+        totalTasks: parseInt(projectStats.task_count),
+        completedTasks: parseInt(projectStats.completed_tasks),
+        inProgressTasks: parseInt(projectStats.in_progress_tasks),
+        todoTasks: parseInt(projectStats.todo_tasks),
+        reviewTasks: parseInt(projectStats.review_tasks),
+        archivedTasks: parseInt(projectStats.archived_tasks),
+        progress: parseFloat(projectStats.completion_percentage),
+        activeMemberCount: parseInt(projectStats.member_count)
+      } : project.stats
+    }
   })
 
-  const handleCreateProject = () => {
-    setIsCreateModalOpen(true)
+  // Calculate overall statistics
+  const overallStats = statistics?.overallStats ? {
+    totalProjects: parseInt(statistics.overallStats.total_projects),
+    totalBoards: parseInt(statistics.overallStats.total_boards),
+    totalTasks: parseInt(statistics.overallStats.total_tasks),
+    completedTasks: parseInt(statistics.overallStats.completed_tasks),
+    totalMembers: parseInt(statistics.overallStats.total_unique_members),
+    overallProgress: parseFloat(statistics.overallStats.overall_completion_percentage)
+  } : {
+    totalProjects: projects.length,
+    totalBoards: 0,
+    totalTasks: 0,
+    completedTasks: 0,
+    totalMembers: 0,
+    overallProgress: 0
   }
 
-  const handleProjectCreated = () => {
-    setIsCreateModalOpen(false)
-    refreshProjects()
+  // Filter projects
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         project.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = statusFilter === '' || project.status === statusFilter
+    const matchesPriority = priorityFilter === '' || project.priority === priorityFilter
+    const matchesDepartment = departmentFilter === '' || project.departmentId?.toString() === departmentFilter
+    
+    return matchesSearch && matchesStatus && matchesPriority && matchesDepartment
+  })
+
+  // Pagination
+  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedProjects = filteredProjects.slice(startIndex, startIndex + itemsPerPage)
+
+  const handleCreateProject = async (projectData: any) => {
+    try {
+      await createProject(projectData)
+      setIsCreateModalOpen(false)
+    } catch (error) {
+      console.error('Failed to create project:', error)
+    }
   }
 
-  const handleSearch = (value: string) => {
-    setSearchTerm(value)
-    setCurrentPage(1)
+  // Priority Distribution for Chart
+  const priorityData = statistics?.priorityDistribution || []
+
+  if (projectsLoading || statsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
   }
 
-  const handleStatusFilter = (status: ProjectStatus | '') => {
-    setStatusFilter(status)
-    setCurrentPage(1)
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-600">Error: {error}</div>
+      </div>
+    )
   }
-
-  const handlePriorityFilter = (priority: ProjectPriority | '') => {
-    setPriorityFilter(priority)
-    setCurrentPage(1)
-  }
-
-  const handleDepartmentFilter = (departmentId: string) => {
-    setDepartmentFilter(departmentId)
-    setCurrentPage(1)
-  }
-
-  const filteredProjects = React.useMemo(() => {
-    return (projects || []).filter(project => {
-      if (priorityFilter && project.priority !== priorityFilter) return false
-      return true
-    })
-  }, [projects, priorityFilter])
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: theme.colors.background.default }}>
+    <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-6">
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
+            <p className="text-gray-600 mt-2">Manage and track your organization's projects</p>
+          </div>
+          <div className="flex space-x-4">
+            <button
+              onClick={() => setShowWorkflow(!showWorkflow)}
+              className="btn btn-secondary flex items-center"
+            >
+              <ChartBarIcon className="h-5 w-5 mr-2" />
+              {showWorkflow ? 'Hide' : 'Show'} Workflow
+            </button>
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="btn btn-primary flex items-center"
+            >
+              <PlusIcon className="h-5 w-5 mr-2" />
+              New Project
+            </button>
+          </div>
+        </div>
+
+        {/* Enhanced Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+          <div className="bg-white p-4 rounded-lg shadow">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold" style={{ color: theme.colors.text.primary }}>
-                  Projects
-                </h1>
-                <p className="mt-1 text-sm" style={{ color: theme.colors.text.secondary }}>
-                  Organize work with the integrated project-board-task workflow
-                </p>
+                <p className="text-sm text-gray-600">Total Projects</p>
+                <p className="text-2xl font-bold">{overallStats.totalProjects}</p>
               </div>
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={() => setShowWorkflow(!showWorkflow)}
-                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  Workflow Guide
-                  {showWorkflow ? (
-                    <ChevronUpIcon className="h-4 w-4 ml-2" />
-                  ) : (
-                    <ChevronDownIcon className="h-4 w-4 ml-2" />
-                  )}
-                </button>
-                <button
-                  onClick={handleCreateProject}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: theme.colors.primary, color: theme.colors.secondary }}
-                >
-                  <PlusIcon className="h-5 w-5 mr-2" />
-                  New Project
-                </button>
-              </div>
+              <FolderIcon className="h-8 w-8 text-blue-500" />
             </div>
+          </div>
 
-            {/* Workflow Demo */}
-            {showWorkflow && (
-              <div className="mt-6">
-                <ProjectWorkflowDemo />
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Boards</p>
+                <p className="text-2xl font-bold">{overallStats.totalBoards}</p>
               </div>
-            )}
-
-            {/* Filters and Search */}
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Search */}
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
-                  style={{ 
-                    focusRingColor: theme.colors.primary,
-                    '--tw-ring-color': theme.colors.primary 
-                  } as any}
-                  placeholder="Search projects..."
-                />
-              </div>
-
-              {/* View Mode Toggle */}
-              <div className="flex items-center space-x-2 sm:col-start-4">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'grid'
-                      ? 'text-white'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                  style={{
-                    backgroundColor: viewMode === 'grid' ? theme.colors.primary : 'transparent',
-                    color: viewMode === 'grid' ? theme.colors.secondary : undefined
-                  }}
-                >
-                  <ViewColumnsIcon className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'list'
-                      ? 'text-white'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                  style={{
-                    backgroundColor: viewMode === 'list' ? theme.colors.primary : 'transparent',
-                    color: viewMode === 'list' ? theme.colors.secondary : undefined
-                  }}
-                >
-                  <ListBulletIcon className="h-5 w-5" />
-                </button>
-              </div>
+              <ChartBarIcon className="h-8 w-8 text-purple-500" />
             </div>
+          </div>
 
-            {/* Filters Component */}
-            <div className="mt-4">
-              <ProjectFilters
-                statusFilter={statusFilter}
-                priorityFilter={priorityFilter}
-                departmentFilter={departmentFilter}
-                onStatusChange={handleStatusFilter}
-                onPriorityChange={handlePriorityFilter}
-                onDepartmentChange={handleDepartmentFilter}
-              />
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Tasks</p>
+                <p className="text-2xl font-bold">{overallStats.totalTasks}</p>
+              </div>
+              <ClockIcon className="h-8 w-8 text-orange-500" />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Completed</p>
+                <p className="text-2xl font-bold">{overallStats.completedTasks}</p>
+              </div>
+              <CheckCircleIcon className="h-8 w-8 text-green-500" />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Team Members</p>
+                <p className="text-2xl font-bold">{overallStats.totalMembers}</p>
+              </div>
+              <UserGroupIcon className="h-8 w-8 text-indigo-500" />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Overall Progress</p>
+                <p className="text-2xl font-bold">{overallStats.overallProgress.toFixed(1)}%</p>
+              </div>
+              <ArrowTrendingUpIcon className="h-8 w-8 text-teal-500" />
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Project List */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2" 
-                 style={{ borderColor: theme.colors.primary }}></div>
-          </div>
-        ) : projects && projects.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="max-w-md mx-auto">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
-                />
-              </svg>
-              <h3 className="mt-2 text-sm font-medium" style={{ color: theme.colors.text.primary }}>
-                No projects found
-              </h3>
-              <p className="mt-1 text-sm" style={{ color: theme.colors.text.secondary }}>
-                {searchTerm ? 'Try adjusting your search terms.' : 'Get started by creating a new project.'}
-              </p>
-              <div className="mt-6">
-                <button
-                  onClick={handleCreateProject}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: theme.colors.primary, color: theme.colors.secondary }}
-                >
-                  <PlusIcon className="h-5 w-5 mr-2" />
-                  New Project
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Project Stats Summary */}
-            {projects && projects.length > 0 && (
-              <div className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <div className="text-2xl font-bold" style={{ color: theme.colors.primary }}>
-                    {projects.length}
+        {/* Priority Distribution */}
+        {priorityData.length > 0 && (
+          <div className="bg-white p-4 rounded-lg shadow mb-6">
+            <h3 className="text-lg font-semibold mb-4">Task Priority Distribution</h3>
+            <div className="grid grid-cols-4 gap-4">
+              {priorityData.map((priority) => (
+                <div key={priority.priority} className="text-center">
+                  <div className={`p-3 rounded-lg ${
+                    priority.priority === 'urgent' ? 'bg-red-100' :
+                    priority.priority === 'high' ? 'bg-orange-100' :
+                    priority.priority === 'medium' ? 'bg-yellow-100' :
+                    'bg-green-100'
+                  }`}>
+                    <p className="text-sm font-medium capitalize">{priority.priority}</p>
+                    <p className="text-2xl font-bold">{priority.total}</p>
+                    <p className="text-xs text-gray-600">
+                      {priority.completed} completed ({priority.completion_percentage}%)
+                    </p>
                   </div>
-                  <div className="text-sm text-gray-600">Total Projects</div>
                 </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <div className="text-2xl font-bold text-green-600">
-                    {projects.filter(p => p.status === 'active').length}
-                  </div>
-                  <div className="text-sm text-gray-600">Active</div>
-                </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {projects.reduce((sum, p) => sum + (p.stats?.boardCount || 0), 0)}
-                  </div>
-                  <div className="text-sm text-gray-600">Total Boards</div>
-                </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {projects.reduce((sum, p) => sum + (p.stats?.activeMemberCount || 0), 0)}
-                  </div>
-                  <div className="text-sm text-gray-600">Team Members</div>
-                </div>
-              </div>
-            )}
-
-            {/* Project Grid/List */}
-            <div
-              className={
-                viewMode === 'grid' 
-                  ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-                  : 'space-y-4'
-              }
-            >
-              {(projects || []).map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  viewMode={viewMode}
-                  onUpdate={refreshProjects}
-                />
               ))}
             </div>
-          </>
+          </div>
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-8 flex items-center justify-center space-x-2">
+        {/* Recent Completions */}
+        {statistics?.recentCompletions && statistics.recentCompletions.length > 0 && (
+          <div className="bg-white p-4 rounded-lg shadow mb-6">
+            <h3 className="text-lg font-semibold mb-4">Recent Task Completions</h3>
+            <div className="space-y-2">
+              {statistics.recentCompletions.slice(0, 5).map((task) => (
+                <div key={task.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{task.title}</p>
+                    <p className="text-xs text-gray-500">
+                      {task.board_name} • {task.project_name || 'No Project'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-600">{task.assigned_members || 'Unassigned'}</p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(task.completed_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Project Statistics Widget */}
+        <ProjectStatisticsWidget />
+
+        {/* Workflow Demo */}
+        {showWorkflow && (
+          <div className="mb-6">
+            <ProjectWorkflowDemo />
+          </div>
+        )}
+      </div>
+
+      {/* Filters and View Toggle */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <ProjectFilters
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            priorityFilter={priorityFilter}
+            onPriorityChange={setPriorityFilter}
+            departmentFilter={departmentFilter}
+            onDepartmentChange={setDepartmentFilter}
+          />
+          <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+        </div>
+      </div>
+
+      {/* Projects Grid/List */}
+      {paginatedProjects.length === 0 ? (
+        <div className="text-center py-12">
+          <FolderIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-500">No projects found</p>
+        </div>
+      ) : (
+        <div className={viewMode === 'grid' 
+          ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
+          : 'space-y-4'
+        }>
+          {paginatedProjects.map(project => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              viewMode={viewMode}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-8 flex justify-center">
+          <nav className="flex space-x-2">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1 rounded-lg border border-gray-300 disabled:opacity-50 hover:bg-gray-50 transition-colors"
-              style={{
-                borderColor: theme.colors.primary,
-                color: currentPage === 1 ? theme.colors.text.secondary : theme.colors.text.primary
-              }}
+              className="px-3 py-2 rounded-md bg-white border hover:bg-gray-50 disabled:opacity-50"
             >
               Previous
             </button>
-            <span className="px-4 py-1" style={{ color: theme.colors.text.primary }}>
-              Page {currentPage} of {totalPages}
-            </span>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-2 rounded-md ${
+                  currentPage === page
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white border hover:bg-gray-50'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
             <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="px-3 py-1 rounded-lg border disabled:opacity-50 hover:opacity-90 transition-opacity"
-              style={{
-                backgroundColor: currentPage === totalPages ? 'transparent' : theme.colors.primary,
-                borderColor: theme.colors.primary,
-                color: currentPage === totalPages ? theme.colors.text.secondary : theme.colors.secondary
-              }}
+              className="px-3 py-2 rounded-md bg-white border hover:bg-gray-50 disabled:opacity-50"
             >
               Next
             </button>
-          </div>
-        )}
-      </div>
+          </nav>
+        </div>
+      )}
 
       {/* Create Project Modal */}
       <CreateProjectModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={handleProjectCreated}
+        onSubmit={handleCreateProject}
       />
     </div>
   )
 }
-
-export default ProjectList

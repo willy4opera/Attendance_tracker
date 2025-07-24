@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
+import MobileBottomNav from './MobileBottomNav'
 import { useAuth } from '../../contexts/useAuth'
 import { toastError } from '../../utils/toastHelpers'
 import theme from '../../config/theme'
@@ -54,9 +55,12 @@ export default function DashboardLayout({ title = 'Dashboard' }: DashboardLayout
         </div>
 
         {/* Page Content - Full width to match header */}
-        <main className="flex-1 overflow-y-auto" style={{ backgroundColor: theme.colors.background.default }}>
+        <main className="flex-1 overflow-y-auto pb-16 md:pb-0" style={{ backgroundColor: theme.colors.background.default }}>
           <Outlet context={{ user }} />
         </main>
+
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav />
       </div>
     </div>
   )

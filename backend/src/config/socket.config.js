@@ -12,7 +12,7 @@ class SocketManager {
   initialize(server) {
     this.io = socketIO(server, {
       cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        origin: process.env.FRONTEND_URL || 'http://localhost:5173',
         credentials: true
       },
       transports: ['websocket', 'polling']
@@ -99,6 +99,20 @@ class SocketManager {
           });
         }
       });
+
+      // Handle joining task rooms
+      socket.on('join-task', (taskId) => {
+        socket.join(`task:${taskId}`);
+        console.log(`User ${socket.userId} joined task:${taskId}`);
+      });
+
+      // Handle leaving task rooms
+      socket.on('leave-task', (taskId) => {
+        socket.leave(`task:${taskId}`);
+        console.log(`User ${socket.userId} left task:${taskId}`);
+      });
+
+      
 
       // Handle attendance marking
       socket.on('mark-attendance', (data) => {

@@ -1,3 +1,4 @@
+import { transformProjectMembers } from '../utils/projectHelpers'
 import api from './api'
 import type {
   Project,
@@ -27,13 +28,14 @@ export const projectService = {
   // Get project by ID
   async getProject(id: string): Promise<Project> {
     const response = await api.get(`/projects/${id}`)
-    return response.data.data
+    console.log("Raw project response:", response.data.data)
+    return transformProjectMembers(response.data.data)
   },
 
   // Get project with stats
   async getProjectWithStats(id: string): Promise<ProjectWithStats> {
     const response = await api.get(`/projects/${id}`)
-    return response.data.data
+    return transformProjectMembers(response.data.data)
   },
 
   // Create new project

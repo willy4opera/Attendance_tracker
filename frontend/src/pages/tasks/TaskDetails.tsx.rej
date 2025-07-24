@@ -1,0 +1,20 @@
+--- src/pages/tasks/TaskDetails.tsx
++++ src/pages/tasks/TaskDetails.tsx
+@@ -22,6 +22,17 @@ const TaskDetails: React.FC = () => {
+   const taskId = id || '0';
+   const { user } = useAuth();
+   console.log('[TaskDetails] Current user from auth:', user);
++  
++  // Store user info in localStorage for optimistic updates
++  React.useEffect(() => {
++    if (user) {
++      localStorage.setItem('userId', String(user.id || user._id));
++      localStorage.setItem('userFirstName', user.firstName || '');
++      localStorage.setItem('userLastName', user.lastName || '');
++      localStorage.setItem('userEmail', user.email || '');
++      localStorage.setItem('userProfilePicture', user.profilePicture || '');
++    }
++  }, [user]);
+   
+   const [showComments, setShowComments] = useState(true);
+   const [showActivity, setShowActivity] = useState(false);

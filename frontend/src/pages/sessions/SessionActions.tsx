@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { QrCode, Users } from 'lucide-react';
+import { QrCodeIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/useAuth';
 import theme from '../../config/theme';
 
@@ -31,24 +31,47 @@ export const SessionActions: React.FC<SessionActionsProps> = ({ session, onPreve
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 sm:gap-2">
       {canGenerateQR && (
         <button
           onClick={handleQRClick}
-          className="p-2 rounded-md transition-colors hover:bg-gray-100"
+          className="p-1.5 sm:p-2 rounded-md transition-all duration-200 hover:scale-110"
           title="Generate QR Code"
-          style={{ color: theme.colors.primary }}
+          style={{ 
+            color: theme.colors.primary,
+            backgroundColor: 'transparent'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = theme.colors.primary;
+            e.currentTarget.style.color = theme.colors.secondary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.color = theme.colors.primary;
+          }}
         >
-          <QrCode className="w-5 h-5" />
+          <QrCodeIcon className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
       )}
       {isAdminOrModerator && (
         <button
           onClick={handleAttendanceClick}
-          className="p-2 rounded-md transition-colors hover:bg-gray-100"
+          className="p-1.5 sm:p-2 rounded-md transition-all duration-200 hover:scale-110"
           title="View Attendance"
+          style={{ 
+            color: theme.colors.text.secondary,
+            backgroundColor: 'transparent'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = theme.colors.primary;
+            e.currentTarget.style.color = theme.colors.secondary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.color = theme.colors.text.secondary;
+          }}
         >
-          <Users className="w-5 h-5 text-gray-600" />
+          <UsersIcon className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
       )}
     </div>

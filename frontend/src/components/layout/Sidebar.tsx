@@ -1,38 +1,18 @@
 import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { 
-  AiOutlineDashboard, 
-  AiOutlineCalendar, 
-  AiOutlineCheckCircle,
-  AiOutlineUser,
-  AiOutlineTeam,
-  AiOutlineFile,
-  AiOutlineQrcode,
-  AiOutlineSetting,
   AiOutlineLogout,
   AiOutlineMenu,
   AiOutlineClose,
   AiOutlineMail,
-  AiOutlineProject,
-  AiOutlineAppstore,
-  AiOutlineCheckSquare,
   AiOutlineDown,
   AiOutlineRight,
   AiOutlinePlus,
-  AiOutlineNotification,
-  AiOutlinePlayCircle,
+  AiOutlineNotification
 } from 'react-icons/ai'
-import { FaChartBar, FaTasks, FaProjectDiagram, FaColumns } from 'react-icons/fa'
-import { MdDashboard, MdViewKanban } from 'react-icons/md'
 import theme from '../../config/theme'
-
-interface MenuItem {
-  name: string
-  path: string
-  icon: React.ReactNode
-  roles?: string[]
-  children?: MenuItem[]
-}
+import { menuItems, filterMenuItems } from './sidebar'
+import type { MenuItem } from './sidebar/types'
 
 interface Department {
   id: number
@@ -65,138 +45,8 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
   // Check both possible field names for email verification status
   const isEmailVerified = user?.isEmailVerified ?? user?.emailVerified ?? false
 
-  const menuItems: MenuItem[] = [
-    {
-      name: 'Dashboard',
-      path: '/dashboard',
-      icon: <MdDashboard className="w-5 h-5" />
-    },
-    {
-      name: 'Project Management',
-      path: '/project-management',
-      icon: <FaProjectDiagram className="w-5 h-5" />,
-      children: [
-        {
-          name: 'Projects',
-          path: '/projects',
-          icon: <AiOutlineProject className="w-4 h-4" />
-        },
-        {
-          name: 'Boards',
-          path: '/boards',
-          icon: <MdViewKanban className="w-4 h-4" />
-        },
-        {
-          name: 'All Tasks',
-          path: '/tasks',
-          icon: <FaTasks className="w-4 h-4" />
-        },
-        {
-          name: 'Workflow Demo',
-          path: '/projects/demo/workflow',
-          icon: <AiOutlinePlayCircle className="w-4 h-4" />
-        }
-      ]
-    },
-    {
-      name: 'Attendance',
-      path: '/attendance-management',
-      icon: <AiOutlineCheckCircle className="w-5 h-5" />,
-      children: [
-        {
-          name: 'Sessions',
-          path: '/sessions',
-          icon: <AiOutlineCalendar className="w-4 h-4" />
-        },
-        {
-          name: 'My Attendance',
-          path: '/attendance',
-          icon: <AiOutlineCheckSquare className="w-4 h-4" />
-        },
-        {
-          name: 'QR Scanner',
-          path: '/qr-scanner',
-          icon: <AiOutlineQrcode className="w-4 h-4" />
-        }
-      ]
-    },
-    {
-      name: 'Analytics',
-      path: '/analytics',
-      icon: <FaChartBar className="w-5 h-5" />,
-      children: [
-        {
-          name: 'Reports',
-          path: '/reports',
-          icon: <FaChartBar className="w-4 h-4" />
-        },
-        {
-          name: 'Dashboard Analytics',
-          path: '/analytics/dashboard',
-          icon: <AiOutlineDashboard className="w-4 h-4" />
-        }
-      ]
-    },
-    {
-      name: 'Resources',
-      path: '/resources',
-      icon: <AiOutlineAppstore className="w-5 h-5" />,
-      children: [
-        {
-          name: 'Files',
-          path: '/files',
-          icon: <AiOutlineFile className="w-4 h-4" />
-        },
-        {
-          name: 'Templates',
-          path: '/templates',
-          icon: <FaColumns className="w-4 h-4" />
-        }
-      ]
-    },
-    {
-      name: 'Administration',
-      path: '/administration',
-      icon: <AiOutlineSetting className="w-5 h-5" />,
-      roles: ['admin', 'moderator'],
-      children: [
-        {
-          name: 'Users',
-          path: '/users',
-          icon: <AiOutlineTeam className="w-4 h-4" />,
-          roles: ['admin', 'moderator']
-        },
-        {
-          name: 'Departments',
-          path: '/departments',
-          icon: <AiOutlineTeam className="w-4 h-4" />,
-          roles: ['admin', 'moderator']
-        },
-        {
-          name: 'Settings',
-          path: '/settings',
-          icon: <AiOutlineSetting className="w-4 h-4" />,
-          roles: ['admin']
-        }
-      ]
-    },
-    {
-      name: 'Profile',
-      path: '/profile',
-      icon: <AiOutlineUser className="w-5 h-5" />
-    }
-  ]
-
-  const filteredMenuItems = menuItems.filter(item => {
-    if (!item.roles) return true
-    return item.roles.includes(user?.role || 'user')
-  }).map(item => ({
-    ...item,
-    children: item.children?.filter(child => {
-      if (!child.roles) return true
-      return child.roles.includes(user?.role || 'user')
-    })
-  }))
+  // Use modular menu items with filtering
+  const filteredMenuItems = filterMenuItems(menuItems, user?.role || 'user')
 
   // Function to get the image URL
   const getImageUrl = (url: string | undefined) => {
@@ -325,13 +175,13 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
 
       {/* Sidebar */}
       <div
-        className={`fixed left-0 top-0 h-full bg-white shadow-lg transition-all duration-300 z-40 ${
+        className={`fixed left-0 top-0 h-full bg-white shadow-2xl transition-all duration-300 z-40 flex flex-col ${
           isCollapsed ? 'w-20' : 'w-64'
         } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
         style={{ backgroundColor: theme.colors.background.paper }}
       >
-        {/* Logo Section */}
-        <div className="p-4 border-b flex items-center justify-between">
+        {/* Logo Section - Fixed at top */}
+        <div className="flex-shrink-0 p-4 border-b flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <img src="/images/logo.png" alt="Logo" className="h-10 w-10" />
             {!isCollapsed && (
@@ -348,8 +198,8 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           </button>
         </div>
 
-        {/* User Info */}
-        <div className="p-4 border-b">
+        {/* User Info - Fixed at top */}
+        <div className="flex-shrink-0 p-4 border-b">
           <div className="flex items-center space-x-3">
             {profilePictureUrl && !imageError ? (
               <img
@@ -386,55 +236,58 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        {!isCollapsed && (
-          <div className="p-4 border-b">
-            <div className="flex space-x-2">
-              <Link
-                to="/projects/create"
-                className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors"
-                style={{ 
-                  backgroundColor: theme.colors.primary + '15',
-                  color: theme.colors.primary 
-                }}
-              >
-                <AiOutlinePlus className="w-4 h-4" />
-                <span>Project</span>
-              </Link>
-              <Link
-                to="/boards/create"
-                className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors"
-                style={{ 
-                  backgroundColor: theme.colors.primary + '15',
-                  color: theme.colors.primary 
-                }}
-              >
-                <AiOutlinePlus className="w-4 h-4" />
-                <span>Board</span>
-              </Link>
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+          {/* Quick Actions */}
+          {!isCollapsed && (
+            <div className="p-4 border-b">
+              <div className="flex space-x-2">
+                <Link
+                  to="/projects/create"
+                  className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors"
+                  style={{ 
+                    backgroundColor: theme.colors.primary + '15',
+                    color: theme.colors.primary 
+                  }}
+                >
+                  <AiOutlinePlus className="w-4 h-4" />
+                  <span>Project</span>
+                </Link>
+                <Link
+                  to="/boards/create"
+                  className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors"
+                  style={{ 
+                    backgroundColor: theme.colors.primary + '15',
+                    color: theme.colors.primary 
+                  }}
+                >
+                  <AiOutlinePlus className="w-4 h-4" />
+                  <span>Board</span>
+                </Link>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Notifications Badge */}
-        {!isCollapsed && (
-          <div className="px-4 py-2">
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <AiOutlineNotification className="w-4 h-4" />
-              <span>3 new notifications</span>
+          {/* Notifications Badge */}
+          {!isCollapsed && (
+            <div className="px-4 py-2">
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <AiOutlineNotification className="w-4 h-4" />
+                <span>3 new notifications</span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4">
-          <ul className="space-y-2">
-            {filteredMenuItems.map(renderMenuItem)}
-          </ul>
-        </nav>
+          {/* Navigation */}
+          <nav className="p-4">
+            <ul className="space-y-2">
+              {filteredMenuItems.map(renderMenuItem)}
+            </ul>
+          </nav>
+        </div>
 
-        {/* Logout Button */}
-        <div className="p-4 border-t">
+        {/* Logout Button - Fixed at bottom */}
+        <div className="flex-shrink-0 p-4 border-t">
           <button
             onClick={onLogout}
             className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors hover:bg-red-50"

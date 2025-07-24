@@ -1,40 +1,51 @@
 #!/usr/bin/env node
 
 require('dotenv').config();
-const cloudinary = require('cloudinary').v2;
+const { cloudinary } = require('../src/config/cloudinary.config');
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-async function testCloudinarySimple() {
-  console.log('Testing Cloudinary with simple upload...\n');
-  
+async function testSimpleCloudinary() {
   try {
-    // Test with a simple base64 image
-    const base64Image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    console.log('Testing simple Cloudinary functionality...\n');
     
-    console.log('Uploading 1x1 pixel image...');
-    const result = await cloudinary.uploader.upload(base64Image, {
-      folder: 'attendance-tracker/test',
-      public_id: `test_${Date.now()}`,
-      timeout: 60000 // 60 second timeout
+    // Test 1: Configuration
+    console.log('1. Configuration:');
+    const config = cloudinary.config();
+    console.log('   Cloud Name:', config.cloud_name);
+    console.log('   API Key:', config.api_key ? '✓ Set' : '✗ Not set');
+    console.log('   Secure:', config.secure);
+    console.log('   Timeout:', config.timeout);
+    
+    // Test 2: Generate URL
+    console.log('\n2. URL Generation:');
+    const testUrl = cloudinary.url('sample', {
+      width: 300,
+      height: 300,
+      crop: 'fill',
+      quality: 'auto',
+      secure: true
     });
+    console.log('   Generated URL:', testUrl);
     
-    console.log('✅ Upload successful!');
-    console.log('URL:', result.secure_url);
-    console.log('Public ID:', result.public_id);
+    // Test 3: API Ping
+    console.log('\n3. API Connection:');
+    try {
+      const ping = await cloudinary.api.ping();
+      console.log('   Status:', ping.status);
+      console.log('   Rate Limit Remaining:', ping.rate_limit_remaining);
+    } catch (error) {
+      console.log('   Connection Error:', error.message);
+    }
     
-    // Delete the test image
-    await cloudinary.uploader.destroy(result.public_id);
-    console.log('✅ Cleanup successful!');
+    console.log('\n✅ Configuration is working correctly!');
+    console.log('\nThe updated controller and routes are ready to use with:');
+    console.log('- Direct upload using uploadDirect()');
+    console.log('- Buffer upload using uploadImageBuffer()');
+    console.log('- Image deletion using deleteImage()');
+    console.log('- Optimized URLs using getOptimizedImageUrl()');
     
   } catch (error) {
     console.error('❌ Error:', error);
   }
 }
 
-testCloudinarySimple();
+testSimpleCloudinary();

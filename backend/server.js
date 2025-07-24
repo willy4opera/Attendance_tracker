@@ -53,6 +53,84 @@ io.on('connection', (socket) => {
     logger.info(`Socket ${socket.id} subscribed to ${channel}`);
   });
   
+  // Handle joining task-specific rooms
+  socket.on('join-task', (taskId) => {
+    const room = `task:${taskId}`;
+    socket.join(room);
+    logger.info(`Socket ${socket.id} joined task room: ${room}`);
+  });
+  
+  socket.on('leave-task', (taskId) => {
+
+  // Session room management for attendance
+  socket.on('join-session', (sessionId) => {
+    const room = `session:${sessionId}`;
+    socket.join(room);
+    logger.info(`Socket ${socket.id} joined session room: ${room}`);
+  });
+  
+  socket.on('leave-session', (sessionId) => {
+    const room = `session:${sessionId}`;
+    socket.leave(room);
+    logger.info(`Socket ${socket.id} left session room: ${room}`);
+  });
+    const room = `task:${taskId}`;
+
+  // Session room management for attendance
+  socket.on('join-session', (sessionId) => {
+    const room = `session:${sessionId}`;
+    socket.join(room);
+    logger.info(`Socket ${socket.id} joined session room: ${room}`);
+  });
+  
+  socket.on('leave-session', (sessionId) => {
+    const room = `session:${sessionId}`;
+    socket.leave(room);
+    logger.info(`Socket ${socket.id} left session room: ${room}`);
+  });
+    socket.leave(room);
+
+  // Session room management for attendance
+  socket.on('join-session', (sessionId) => {
+    const room = `session:${sessionId}`;
+    socket.join(room);
+    logger.info(`Socket ${socket.id} joined session room: ${room}`);
+  });
+  
+  socket.on('leave-session', (sessionId) => {
+    const room = `session:${sessionId}`;
+    socket.leave(room);
+    logger.info(`Socket ${socket.id} left session room: ${room}`);
+  });
+    logger.info(`Socket ${socket.id} left task room: ${room}`);
+
+  // Session room management for attendance
+  socket.on('join-session', (sessionId) => {
+    const room = `session:${sessionId}`;
+    socket.join(room);
+    logger.info(`Socket ${socket.id} joined session room: ${room}`);
+  });
+  
+  socket.on('leave-session', (sessionId) => {
+    const room = `session:${sessionId}`;
+    socket.leave(room);
+    logger.info(`Socket ${socket.id} left session room: ${room}`);
+  });
+  });
+
+  // Session room management for attendance
+  socket.on('join-session', (sessionId) => {
+    const room = `session:${sessionId}`;
+    socket.join(room);
+    logger.info(`Socket ${socket.id} joined session room: ${room}`);
+  });
+  
+  socket.on('leave-session', (sessionId) => {
+    const room = `session:${sessionId}`;
+    socket.leave(room);
+    logger.info(`Socket ${socket.id} left session room: ${room}`);
+  });
+  
   // Handle unsubscription from channels
   socket.on('unsubscribe', (channel) => {
     socket.leave(channel);
@@ -73,12 +151,20 @@ async function startServer() {
   try {
     // Initialize Database
     await connectDB();
+    // Initialize Redis
+    const { initializeRedis } = require('./src/config/redis');
+    await initializeRedis();
+    logger.info('Redis connected successfully');
     logger.info('Database connected successfully');
 
     // Start scheduled jobs
     const recurringSessionJob = require('./src/jobs/generateRecurringSessions.job');
     if (process.env.NODE_ENV !== 'test') {
       recurringSessionJob.start();
+    const dependencyNotificationJob = require('./src/jobs/processDependencyNotifications.job');
+    if (process.env.NODE_ENV !== 'test') {
+      dependencyNotificationJob.start();
+    }
     }
 
     // Start server

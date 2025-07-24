@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FaArrowLeft, FaSave, FaTimes } from 'react-icons/fa';
-import { useTasks } from '../../hooks/useTasks';
+import { useTask } from '../../hooks/useTasks';
+import { showToast } from '../../utils/toast';
 import type { UpdateTaskData } from '../../services/taskService';
 
 const EditTask: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const taskId = parseInt(id || '0');
-  const { task, isLoading, error, updateTask, isUpdating } = useTasks({ taskId });
+  const taskId = id || '0';
+  const { task, loading: isLoading, error, refetch } = useTask(taskId);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const [formData, setFormData] = useState<UpdateTaskData>({
     title: '',
@@ -94,13 +96,16 @@ const EditTask: React.FC = () => {
     
     if (!validateForm()) return;
 
+    setIsUpdating(true);
     try {
-      const result = await updateTask(taskId, formData);
-      if (result.success) {
-        navigate(`/tasks/${taskId}`);
-      }
+      await taskService.updateTask(taskId, formData);
+      showToast.success('Task updated successfully');
+      navigate(`/tasks/${taskId}`);
     } catch (error) {
       console.error('Error updating task:', error);
+      showToast.error('Failed to update task');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -116,7 +121,7 @@ const EditTask: React.FC = () => {
   if (error || !task) {
     return (
       <div className="p-4 text-red-600 bg-red-50 rounded-lg">
-        Error loading task: {error?.message || 'Task not found'}
+        Error loading task: {error || 'Task not found'}
         <Link to="/boards" className="ml-2 text-blue-600 hover:underline">
           Back to Boards
         </Link>
@@ -195,7 +200,7 @@ const EditTask: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="todo">To Do</option>
-                  <option value="in_progress">In Progress</option>
+                  <option value="in-progress">In Progress</option>
                   <option value="review">Review</option>
                   <option value="done">Done</option>
                   <option value="cancelled">Cancelled</option>
@@ -246,7 +251,12 @@ const EditTask: React.FC = () => {
                 onChange={(e) => setChecklistInput(e.target.value)}
                 placeholder="Add checklist item..."
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyPress={(e) => e.key === 'Enter' && addChecklistItem()}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addChecklistItem();
+                  }
+                }}
               />
               <button
                 type="button"

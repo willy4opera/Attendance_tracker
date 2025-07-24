@@ -1,0 +1,332 @@
+openapi: 3.0.0
+info:
+  title: Attendance Statistics API
+  description: API for retrieving attendance statistics and analytics
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@attendance-tracker.com
+
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Development server
+  - url: https://api.attendance-tracker.com/v1
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /attendance-stats/overall:
+    get:
+      summary: Get Overall Statistics
+      description: Returns simplified statistics suitable for dashboard cards
+      tags:
+        - Attendance Statistics
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OverallStatsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /attendance-stats/dashboard:
+    get:
+      summary: Get Dashboard Statistics
+      description: Returns statistics for today and current week
+      tags:
+        - Attendance Statistics
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/DashboardStatsAdminResponse'
+                  - $ref: '#/components/schemas/DashboardStatsUserResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /attendance-stats/comprehensive:
+    get:
+      summary: Get Comprehensive Statistics
+      description: Returns detailed attendance statistics with optional date filtering
+      tags:
+        - Attendance Statistics
+      parameters:
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          description: Filter start date (YYYY-MM-DD)
+          example: '2025-07-01'
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          description: Filter end date (YYYY-MM-DD)
+          example: '2025-07-31'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComprehensiveStatsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    OverallStatsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: object
+          properties:
+            totalSessions:
+              type: integer
+              description: Total number of sessions
+              example: 13
+            totalAttendance:
+              type: integer
+              description: Total attendance records (present + late)
+              example: 12
+            upcomingSessions:
+              type: integer
+              description: Number of upcoming scheduled sessions
+              example: 0
+            attendanceRate:
+              type: integer
+              description: Attendance rate percentage (0-100)
+              example: 92
+
+    DashboardStatsAdminResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: object
+          properties:
+            today:
+              type: object
+              properties:
+                totalSessions:
+                  type: integer
+                totalAttendance:
+                  type: integer
+                upcomingSessions:
+                  type: integer
+                activeSessions:
+                  type: integer
+                attendanceRate:
+                  type: integer
+            week:
+              type: object
+              properties:
+                totalSessions:
+                  type: integer
+                totalAttendance:
+                  type: integer
+                attendanceRate:
+                  type: integer
+            isAdmin:
+              type: boolean
+              example: true
+
+    DashboardStatsUserResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: object
+          properties:
+            today:
+              type: object
+              properties:
+                totalSessions:
+                  type: integer
+                attendedSessions:
+                  type: integer
+                upcomingSessions:
+                  type: integer
+                attendanceRate:
+                  type: integer
+            week:
+              type: object
+              properties:
+                totalSessions:
+                  type: integer
+                attendedSessions:
+                  type: integer
+                attendanceRate:
+                  type: integer
+            isAdmin:
+              type: boolean
+              example: false
+
+    ComprehensiveStatsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: object
+          properties:
+            overview:
+              type: object
+              properties:
+                totalSessions:
+                  type: integer
+                totalAttendance:
+                  type: integer
+                attendanceRate:
+                  type: integer
+                upcomingSessionsCount:
+                  type: integer
+            statusBreakdown:
+              type: object
+              properties:
+                present:
+                  type: integer
+                late:
+                  type: integer
+                absent:
+                  type: integer
+                excused:
+                  type: integer
+                holiday:
+                  type: integer
+            upcomingSessions:
+              type: array
+              items:
+                $ref: '#/components/schemas/SessionSummary'
+            recentSessions:
+              type: array
+              items:
+                $ref: '#/components/schemas/RecentSession'
+            userView:
+              type: boolean
+            dateRange:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  nullable: true
+                endDate:
+                  type: string
+                  nullable: true
+
+    SessionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        date:
+          type: string
+          format: date-time
+        time:
+          type: string
+          example: "10:00:00 - 11:00:00"
+        location:
+          type: string
+        isVirtual:
+          type: boolean
+
+    RecentSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        date:
+          type: string
+          format: date-time
+        time:
+          type: string
+        attendanceStatus:
+          type: string
+          enum: [present, late, absent, excused, holiday, not_marked]
+        checkInTime:
+          type: string
+          format: date-time
+          nullable: true
+        totalAttendees:
+          type: integer
+          description: Only visible to admin users
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [fail, error]
+        message:
+          type: string
+        error:
+          type: object
+          properties:
+            statusCode:
+              type: integer
+            status:
+              type: string
+
+  responses:
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: fail
+            message: You are not logged in! Please log in to get access.
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            message: Something went wrong!
+            error:
+              statusCode: 500
+              status: error
+
+tags:
+  - name: Attendance Statistics
+    description: Endpoints for retrieving attendance statistics and analytics

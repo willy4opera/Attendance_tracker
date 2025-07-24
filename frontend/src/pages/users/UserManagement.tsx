@@ -58,6 +58,12 @@ interface UserFilters {
 
 export default function UserManagement() {
   const { user: currentUser } = useAuth()
+  const getDepartmentName = (department: string | { id: number; name: string; code: string } | undefined): string | undefined => {
+    if (!department) return undefined;
+    if (typeof department === "string") return department;
+    return department.name;
+  };
+
   const [users, setUsers] = useState<User[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(true)
@@ -373,7 +379,7 @@ export default function UserManagement() {
 
       <div className="flex items-center justify-between pt-2 border-t border-gray-100">
         <span className="text-xs text-gray-500">
-          {user.department?.name || 'No Department'}
+          {getDepartmentName(user.department) || 'No Department'}
         </span>
         
         <div className="flex items-center space-x-2">
@@ -741,7 +747,7 @@ export default function UserManagement() {
                             </td>
                             <td className="px-3 lg:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
                               <span className="text-sm">
-                                {user.department?.name || 'No Department'}
+                                {getDepartmentName(user.department) || 'No Department'}
                               </span>
                             </td>
                             <td className="px-3 lg:px-6 py-4 whitespace-nowrap">

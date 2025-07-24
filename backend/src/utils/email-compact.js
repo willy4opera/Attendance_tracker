@@ -72,7 +72,7 @@ const sendWelcomeEmailCompact = async (user) => {
 <tr><td><strong>Role:</strong> ${user.role || 'User'}</td></tr>
 </table>
 <p style="text-align:center;margin:30px 0">
-<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" style="display:inline-block;padding:12px 30px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;font-weight:bold">Log In to Your Account</a>
+<a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" style="display:inline-block;padding:12px 30px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;font-weight:bold">Log In to Your Account</a>
 </p>
 <p style="color:#666;text-align:center;margin:20px 0 0">Need help? Email us at <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}" style="color:#007bff">${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}</a></p>
 </td></tr>
@@ -97,7 +97,7 @@ Your Account Details:
 - Name: ${user.firstName} ${user.lastName}
 - Role: ${user.role || 'User'}
 
-Log in at: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login
+Log in at: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/login
 
 Need help? Contact us at ${process.env.SUPPORT_EMAIL || 'support@changeambassadors.com'}
 

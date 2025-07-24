@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRealTimeUpdates } from '../hooks/useRealTimeUpdates';
 import { useAuth } from './useAuth';
 import notificationService from '../services/notificationService';
+import api from '../services/api';
+import socketService from '../services/socket.service';
 import type { Notification } from '../types/notification';
 
 interface NotificationContextType {
@@ -32,7 +34,7 @@ interface NotificationProviderProps {
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
 
   // Enable real-time updates for notifications
@@ -46,6 +48,36 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     if (user?.id) {
       loadNotifications();
       loadUnreadCount();
+      
+      // Connect to socket
+      socketService.connect();
+      
+      // Listen for notifications
+      const handleNotification = (data: any) => {
+        console.log('Socket notification received:', data);
+        
+        // Handle dependency notifications
+        if (data.event === 'dependency:notification' && data.data) {
+          const notification = data.data.notification;
+          if (notification) {
+            console.log("Adding notification to state:", notification);
+            // Ensure notification has isRead property
+            const notificationWithReadStatus = { ...notification, isRead: false };
+            addNotification(notificationWithReadStatus);
+            showNotification(
+              notification.content?.subject || 'New Dependency Update',
+              notification.content?.body || 'You have a new dependency notification'
+            );
+          }
+        }
+      };
+      
+      socketService.on('notification', handleNotification);
+      
+      // Cleanup
+      return () => {
+        socketService.off('notification', handleNotification);
+      };
     }
   }, [user?.id]);
 
@@ -57,7 +89,22 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         limit: 50,
         page: 1,
       });
-      setNotifications(response.data.data);
+      // Map API response to match frontend expectations
+      const mappedNotifications = (response.data.notifications || []).map(notification => ({
+        ...notification,
+        isRead: notification.read || false,
+        content: {
+          subject: notification.title,
+          body: notification.message,
+          data: notification.data
+        },
+        notificationType: notification.type,
+        // Handle different URL formats
+        url: notification.url || notification.data?.url || notification.data?.taskUrl || 
+             (notification.data?.taskId ? `/tasks/${notification.data.taskId}` : null)
+      }));
+      
+      setNotifications(mappedNotifications);
     } catch (error) {
       console.error('Error loading notifications:', error);
     }
@@ -68,7 +115,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     
     try {
       const response = await notificationService.getUnreadCount(user.id);
-      setUnreadCount(response.data.count);
+      setUnreadCount(response.data.unreadCount || 0);
     } catch (error) {
       console.error('Error loading unread count:', error);
     }
@@ -91,7 +138,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
   const markAsRead = async (notificationId: number) => {
     try {
-      await notificationService.markAsRead(notificationId);
+      // Check if this is a dependency notification
+      const notification = notifications.find(n => n.id === notificationId);
+      // Always use the regular notification endpoint
+      await notificationService.markAsRead(notificationId.toString());
       
       // Update local state
       setNotifications(prev => 
@@ -103,61 +153,73 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       );
       
       // Update unread count
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      setUnreadCount(prev => Math.max(0, (prev || 0) - 1));
       
-      // Notify other clients via WebSocket
-      sendMessage({
-        type: 'notification_read',
-        notificationId,
-        userId: user?.id,
-      });
-    } catch (error) {
+      // Send real-time update
+    } catch (error: any) {
       console.error('Error marking notification as read:', error);
+      
+      // Still update the UI even if backend fails
+      // This provides better UX - the notification appears read to the user
+      setNotifications(prev => 
+        prev.map(notification =>
+          notification.id === notificationId
+            ? { ...notification, isRead: true }
+            : notification
+        )
+      );
+      
+      // Update unread count
+      setUnreadCount(prev => Math.max(0, (prev || 0) - 1));
+      
+      // Optional: Show a subtle error message without disrupting UX
+      if (error.response?.status === 500) {
+        console.warn('Server error when marking notification as read. The notification will appear read locally.');
+      }
     }
   };
 
   const markAllAsRead = async () => {
-    if (!user?.id) return;
-    
     try {
-      await notificationService.markAllAsRead(user.id);
+      await notificationService.markAllAsRead();
       
       // Update local state
       setNotifications(prev => 
         prev.map(notification => ({ ...notification, isRead: true }))
       );
       
+      // Reset unread count
       setUnreadCount(0);
       
-      // Notify other clients via WebSocket
-      sendMessage({
-        type: 'notifications_read_all',
-        userId: user.id,
-      });
+      // Send real-time update
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
     }
   };
 
   const addNotification = (notification: Notification) => {
-    setNotifications(prev => [notification, ...prev]);
-    
+    console.log("addNotification called with:", notification);
+    console.log("Current notifications before add:", notifications);
+    setNotifications(prev => [notification, ...(Array.isArray(prev) ? prev : [])]);
     if (!notification.isRead) {
-      setUnreadCount(prev => prev + 1);
+      console.log("Updating unread count. Current:", unreadCount);
+      setUnreadCount(prev => (prev || 0) + 1);
+    console.log("New unread count set to:", unreadCount + 1);
+    console.log("New notifications array:", notifications);
     }
-
-    // Show browser notification
-    showNotification(notification.title, notification.message, {
-      tag: `notification-${notification.id}`,
-      data: notification.data,
-    });
   };
 
-  // Listen for real-time notification events
+  // Listen for real-time updates
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       try {
-        const data = JSON.parse(event.data);
+        // Check if data is already an object or needs parsing
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        
+        // Skip OAuth callback messages - they're handled by useSocialLogin
+        if (data.type === 'oauth-callback') {
+          return;
+        }
         
         switch (data.type) {
           case 'notification_new':
@@ -175,7 +237,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                     : notification
                 )
               );
-              setUnreadCount(prev => Math.max(0, prev - 1));
+              setUnreadCount(prev => Math.max(0, (prev || 0) - 1));
             }
             break;
             
@@ -219,3 +281,5 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     </NotificationContext.Provider>
   );
 };
+
+export default NotificationProvider;

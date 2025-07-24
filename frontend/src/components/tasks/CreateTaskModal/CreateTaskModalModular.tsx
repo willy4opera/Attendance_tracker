@@ -1,0 +1,668 @@
+import React, { useState, useEffect } from 'react'
+import { 
+  XMarkIcon, 
+  CheckIcon, 
+  PlusIcon
+} from '@heroicons/react/24/outline'
+import { useProjects } from '../../../hooks/useProjects'
+import { useBoards } from '../../../hooks/useBoards'
+import { MultiUserSelector } from '../../common/MultiUserSelector'
+import { DepartmentSelector } from '../../common/DepartmentSelector'
+import taskService from '../../../services/taskService'
+import type { CreateTaskData } from '../../../services/taskService'
+import { dependencyService } from '../../../services/dependencyService'
+import { boardService } from '../../../services/boardService'
+import type { Project, Board, User, Department, Task } from '../../../types'
+import theme from '../../../config/theme'
+import Swal from 'sweetalert2'
+
+// Import modular components
+import BasicTaskInfo from './BasicTaskInfo'
+import ProjectBoardSelection from './ProjectBoardSelection'
+import TaskDatesTime from './TaskDatesTime'
+import TaskLabels from './TaskLabels'
+import TaskAssignment from './TaskAssignment'
+import TaskDependencies from './TaskDependencies'
+import DependencySelectorModal from './DependencySelectorModal'
+
+interface TaskList {
+  id: number
+  name: string
+  boardId: number
+  position: number
+}
+
+interface ExtendedCreateTaskData extends CreateTaskData {
+  isComplete?: boolean
+  dependencies?: number[]
+}
+
+interface CreateTaskModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onSuccess: (task: any) => void
+  initialProjectId?: string
+  initialBoardId?: string
+  initialListId?: string
+}
+
+export const CreateTaskModalModular: React.FC<CreateTaskModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  initialProjectId,
+  initialBoardId,
+  initialListId
+}) => {
+  const [formData, setFormData] = useState<ExtendedCreateTaskData>({
+    title: '',
+    description: '',
+    taskListId: initialListId ? parseInt(initialListId) : 0,
+    priority: 'medium',
+    labels: [],
+    assignedTo: [],
+    assignedDepartments: [],
+    startDate: "",
+    dueDate: "",
+    estimatedHours: undefined,
+    status: 'todo',
+    isComplete: false,
+    dependencies: []
+  })
+
+  const [selectedProject, setSelectedProject] = useState<string>(initialProjectId || '')
+  const [selectedBoard, setSelectedBoard] = useState<string>(initialBoardId || '')
+  const [availableLists, setAvailableLists] = useState<TaskList[]>([])
+  const [availableTasks, setAvailableTasks] = useState<Task[]>([])
+  const [selectedUsers, setSelectedUsers] = useState<User[]>([])
+  const [selectedDepartments, setSelectedDepartments] = useState<Department[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showDependencySelector, setShowDependencySelector] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Hooks
+  const { projects } = useProjects({ limit: 100 })
+  const { boards } = useBoards({ 
+    projectId: selectedProject || undefined,
+    limit: 100 
+  })
+
+  // Fetch board data with lists when board is selected
+  useEffect(() => {
+    if (selectedBoard) {
+      fetchBoardLists(selectedBoard)
+      fetchAllAvailableTasks(selectedBoard)
+    }
+  }, [selectedBoard])
+
+  const fetchBoardLists = async (boardId: string) => {
+    try {
+      const board = await boardService.getBoard(boardId)
+      setAvailableLists(board.lists || [])
+      
+      // If initialListId is provided and matches, set it
+      if (initialListId && board.lists?.some((list: TaskList) => list.id === parseInt(initialListId))) {
+        setFormData(prev => ({ ...prev, taskListId: parseInt(initialListId) }))
+      } else if (board.lists?.length > 0) {
+        setFormData(prev => ({ ...prev, taskListId: board.lists[0].id }))
+      }
+    } catch (error) {
+      console.error('Error fetching board lists:', error)
+    }
+  }
+
+  const fetchAllAvailableTasks = async (boardId: string) => {
+    try {
+      // First, try to get all board tasks (includes all tasks on the board)
+      const boardTasks = await taskService.getBoardTasks(boardId)
+      
+      // Then, try to get user's tasks that might not be on the board yet
+      try {
+        const response = await taskService.getAllTasks({ limit: 100 })
+        const userTasks = response.tasks || []
+        
+        // Combine both sets of tasks and remove duplicates
+        const taskMap = new Map()
+        
+        // Add board tasks first
+        boardTasks.forEach(task => taskMap.set(task.id, task))
+        
+        // Add user tasks (won't override existing board tasks)
+        userTasks.forEach(task => {
+          if (!taskMap.has(task.id)) {
+            taskMap.set(task.id, task)
+          }
+        })
+        
+        // Convert back to array and sort by ID for consistency
+        const allTasks = Array.from(taskMap.values()).sort((a, b) => a.id - b.id)
+        setAvailableTasks(allTasks)
+        
+      } catch (userTaskError) {
+        console.error('Error fetching user tasks:', userTaskError)
+        // If user tasks fail, at least use board tasks
+        setAvailableTasks(boardTasks || [])
+      }
+      
+    } catch (error) {
+      console.error('Error fetching board tasks:', error)
+      
+      // Last resort: try to get just the user's tasks
+      try {
+        const response = await taskService.getAllTasks({ limit: 100 })
+        setAvailableTasks(response.tasks || [])
+      } catch (fallbackError) {
+        console.error('Error fetching any tasks:', fallbackError)
+        setAvailableTasks([])
+      }
+    }
+  }
+
+  const handleFormChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }))
+    }
+  }
+
+  const handleProjectChange = (projectId: string) => {
+    setSelectedProject(projectId)
+    setSelectedBoard('')
+    setAvailableLists([])
+    setFormData(prev => ({ ...prev, taskListId: 0 }))
+  }
+
+  const handleBoardChange = (boardId: string) => {
+    setSelectedBoard(boardId)
+  }
+
+  const handleAddLabel = (label: string) => {
+    setFormData(prev => ({
+      ...prev,
+      labels: [...(prev.labels || []), label]
+    }))
+  }
+
+  const handleRemoveLabel = (label: string) => {
+    setFormData(prev => ({
+      ...prev,
+      labels: prev.labels?.filter(l => l !== label) || []
+    }))
+  }
+
+  const handleRemoveDependency = (depId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      dependencies: prev.dependencies?.filter(id => id !== depId) || []
+    }))
+  }
+
+  const handleAddDependency = (depId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      dependencies: [...(prev.dependencies || []), depId]
+    }))
+  }
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.title.trim()) {
+      newErrors.title = 'Task title is required'
+    }
+
+    if (!selectedProject) {
+      newErrors.project = 'Project is required'
+    }
+
+    if (!selectedBoard) {
+      newErrors.board = 'Board is required'
+    }
+
+    if (!formData.taskListId) {
+      newErrors.list = 'Task list is required'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const getSelectedProjectName = () => projects?.find(p => p.id.toString() === selectedProject)?.name || ''
+  const getSelectedBoardName = () => boards?.find(b => b.id.toString() === selectedBoard)?.name || ''
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!validateForm()) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Validation Error',
+        text: 'Please fill in all required fields',
+        confirmButtonColor: theme.colors.primary,
+        background: theme.colors.background.paper,
+        color: theme.colors.text.primary,
+        customClass: {
+          popup: 'rounded-2xl',
+          confirmButton: 'rounded-xl px-6 py-3 font-semibold'
+        }
+      })
+      return
+    }
+
+    // Show confirmation dialog
+    const confirmResult = await Swal.fire({
+      title: 'Create Task?',
+      html: `
+        <div style="text-align: left;">
+          <p><strong>Title:</strong> ${formData.title}</p>
+          ${formData.description ? `<p><strong>Description:</strong> ${formData.description}</p>` : ''}
+          <p><strong>Priority:</strong> ${formData.priority}</p>
+          <p><strong>Status:</strong> ${formData.isComplete ? 'Complete' : formData.status}</p>
+          ${formData.startDate ? `<p><strong>Start Date:</strong> ${new Date(formData.startDate).toLocaleDateString()}</p>` : ''}
+          ${formData.dueDate ? `<p><strong>Due Date:</strong> ${new Date(formData.dueDate).toLocaleDateString()}</p>` : ''}
+          ${formData.estimatedHours ? `<p><strong>Estimated Hours:</strong> ${formData.estimatedHours}</p>` : ''}
+          <p><strong>Project:</strong> ${getSelectedProjectName()}</p>
+          <p><strong>Board:</strong> ${getSelectedBoardName()}</p>
+          <p><strong>List:</strong> ${availableLists.find(l => l.id === formData.taskListId)?.name || ''}</p>
+          ${selectedUsers.length > 0 ? `<p><strong>Assigned to:</strong> ${selectedUsers.map(u => `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email).join(', ')}</p>` : ''}
+          ${formData.dependencies && formData.dependencies.length > 0 ? `<p><strong>Dependencies:</strong> ${formData.dependencies.length} task(s)</p>` : ''}
+        </div>
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: theme.colors.secondary,
+        cancelButtonColor: theme.colors.primary,
+        confirmButtonTextColor: theme.colors.primary,
+        cancelButtonTextColor: theme.colors.secondary,
+      confirmButtonText: 'Yes, create it!',
+      cancelButtonText: 'Cancel',
+      background: theme.colors.background.paper,
+      color: theme.colors.text.primary
+    })
+
+    if (!confirmResult.isConfirmed) {
+      return
+    }
+
+    setIsSubmitting(true)
+    
+    try {
+      // Log form data before processing
+      console.log('Form data before processing:', {
+        startDate: formData.startDate,
+        dueDate: formData.dueDate,
+        estimatedHours: formData.estimatedHours,
+        rawFormData: formData
+      });
+      
+      // Prepare task data without dependencies
+      const { dependencies, ...taskDataWithoutDeps } = formData
+      const taskData: CreateTaskData = {
+        ...taskDataWithoutDeps,
+        assignedTo: selectedUsers.map(u => u.id),
+        assignedDepartments: selectedDepartments.map(d => d.id),
+        // Convert empty strings to undefined for dates
+        startDate: formData.startDate || undefined,
+        dueDate: formData.dueDate || undefined,
+        // Ensure numeric fields are properly handled
+        estimatedHours: formData.estimatedHours || undefined,
+        // Remove isComplete if it exists as it's not part of CreateTaskData
+        isComplete: undefined
+      }
+
+      // Filter out undefined values
+      const cleanTaskData = Object.entries(taskData).reduce((acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as CreateTaskData);
+      
+      console.log('Final data being sent to backend:', cleanTaskData);
+      
+      const result = await taskService.createTask(cleanTaskData)
+
+      // Handle dependencies if any were selected
+      if (dependencies && dependencies.length > 0) {
+        try {
+          // Create dependencies for the newly created task
+          const dependencyPromises = dependencies.map(predecessorTaskId => 
+            dependencyService.createDependency({
+              predecessorTaskId,
+              successorTaskId: result.id,
+              dependencyType: 'FS',
+              lagTime: 0,
+              notifyUsers: true
+            })
+          )
+          
+          await Promise.all(dependencyPromises)
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'Task Created!',
+            text: 'Your task has been created successfully with all dependencies.',
+            showConfirmButton: false,
+            timer: 2000,
+            background: theme.colors.background.paper,
+            color: theme.colors.text.primary,
+            iconColor: theme.colors.primary,
+            customClass: {
+              popup: 'rounded-2xl'
+            }
+          })
+        } catch (depError) {
+          console.error('Error creating dependencies:', depError)
+          // Don't fail the whole operation if dependencies fail
+          Swal.fire({
+            icon: 'warning',
+            title: 'Task Created with Warning',
+            text: 'Task was created successfully, but some dependencies could not be added.',
+            confirmButtonColor: theme.colors.primary,
+            background: theme.colors.background.paper,
+            color: theme.colors.text.primary,
+            customClass: {
+              popup: 'rounded-2xl',
+              confirmButton: 'rounded-xl px-6 py-3 font-semibold'
+            }
+          })
+        }
+      } else {
+        Swal.fire({
+          icon: 'success',
+          title: 'Task Created!',
+          text: 'Your task has been created successfully.',
+          showConfirmButton: false,
+          timer: 2000,
+          background: theme.colors.background.paper,
+          color: theme.colors.text.primary,
+          iconColor: theme.colors.primary,
+          customClass: {
+            popup: 'rounded-2xl'
+          }
+        })
+      }
+
+      onSuccess(result)
+      handleClose()
+    } catch (error: any) {
+      console.error('Error creating task:', error)
+      
+      // Parse different types of errors
+      let errorMessage = 'Failed to create task. Please try again.'
+      let errorTitle = 'Error'
+      
+      if (error.response) {
+        // API error response
+        if (error.response.status === 400) {
+          errorTitle = 'Validation Error'
+          errorMessage = error.response.data?.message || 'Please check your input and try again.'
+        } else if (error.response.status === 401) {
+          errorTitle = 'Authentication Error'
+          errorMessage = 'Your session has expired. Please log in again.'
+        } else if (error.response.status === 403) {
+          errorTitle = 'Permission Denied'
+          errorMessage = 'You do not have permission to create tasks in this project.'
+        } else if (error.response.status === 500) {
+          errorTitle = 'Server Error'
+          errorMessage = 'An unexpected error occurred. Please try again later.'
+        } else {
+          errorMessage = error.response.data?.message || error.message || errorMessage
+        }
+      } else if (error.request) {
+        // Network error
+        errorTitle = 'Network Error'
+        errorMessage = 'Unable to connect to the server. Please check your internet connection.'
+      } else {
+        // Other errors
+        errorMessage = error.message || errorMessage
+      }
+      
+      Swal.fire({
+        icon: 'error',
+        title: errorTitle,
+        text: errorMessage,
+        confirmButtonColor: theme.colors.primary,
+        background: theme.colors.background.paper,
+        color: theme.colors.text.primary,
+        customClass: {
+          popup: 'rounded-2xl',
+          confirmButton: 'rounded-xl px-6 py-3 font-semibold'
+        }
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleClose = () => {
+    if (!isSubmitting) {
+      setFormData({
+        title: '',
+        description: '',
+        taskListId: 0,
+        priority: 'medium',
+        labels: [],
+        assignedTo: [],
+        assignedDepartments: [],
+        startDate: "",
+    dueDate: "",
+        estimatedHours: undefined,
+        status: 'todo',
+        isComplete: false,
+        dependencies: []
+      })
+      setSelectedProject('')
+      setSelectedBoard('')
+      setAvailableLists([])
+      setSelectedUsers([])
+      setSelectedDepartments([])
+      setErrors({})
+      onClose()
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+          <div className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm transition-opacity" onClick={handleClose} />
+          
+          <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full">
+            {/* Header with gradient */}
+            <div 
+              className="relative p-6 pb-4 flex-shrink-0"
+              style={{
+                background: `linear-gradient(135deg, ${theme.colors.secondary} 0%, ${theme.colors.secondary}dd 100%)`
+              }}
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
+                <CheckIcon className="w-full h-full" style={{ color: theme.colors.primary }} />
+              </div>
+              
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="p-3 rounded-xl"
+                    style={{ backgroundColor: theme.colors.primary + '20' }}
+                  >
+                    <PlusIcon className="w-6 h-6" style={{ color: theme.colors.primary }} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold" style={{ color: theme.colors.primary }}>
+                      Create New Task
+                    </h2>
+                    <p className="text-sm opacity-80" style={{ color: theme.colors.primary }}>
+                      Add a new task to your board
+                    </p>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={handleClose}
+                  className="p-2 rounded-full transition-all duration-200 hover:scale-110"
+                  style={{
+                    backgroundColor: theme.colors.primary + '20',
+                    color: theme.colors.primary
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.primary;
+                    e.currentTarget.style.color = theme.colors.secondary;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.primary + '20';
+                    e.currentTarget.style.color = theme.colors.primary;
+                  }}
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Form Content */}
+            <form onSubmit={handleSubmit} className="bg-white px-6 py-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left Column - Basic Information */}
+                <div className="space-y-6">
+                  {/* Basic Task Information */}
+                  <BasicTaskInfo
+                    formData={formData}
+                    errors={errors}
+                    onChange={handleFormChange}
+                  />
+
+                  {/* Task Dependencies */}
+                  <TaskDependencies
+                    dependencies={formData.dependencies || []}
+                    availableTasks={availableTasks}
+                    onShowDependencySelector={() => setShowDependencySelector(true)}
+                    onRemoveDependency={handleRemoveDependency}
+                  />
+                </div>
+
+                {/* Middle Column - Board Selection and Dates */}
+                <div className="space-y-6">
+                  {/* Project and Board Selection */}
+                  <ProjectBoardSelection
+                    selectedProject={selectedProject}
+                    selectedBoard={selectedBoard}
+                    taskListId={formData.taskListId}
+                    projects={projects || []}
+                    boards={boards || []}
+                    availableLists={availableLists}
+                    errors={errors}
+                    onProjectChange={handleProjectChange}
+                    onBoardChange={handleBoardChange}
+                    onListChange={(listId) => handleFormChange('taskListId', listId)}
+                  />
+
+                  {/* Dates and Time */}
+                  <TaskDatesTime
+                    formData={formData}
+                    onChange={handleFormChange}
+                  />
+                </div>
+
+                {/* Right Column - Assignment and Labels */}
+                <div className="space-y-6">
+                  {/* Assignment */}
+                  <TaskAssignment
+                    selectedUsers={selectedUsers}
+                    selectedDepartments={selectedDepartments}
+                    onUsersChange={setSelectedUsers}
+                    onDepartmentsChange={setSelectedDepartments}
+                  />
+
+                  {/* Labels */}
+                  <TaskLabels
+                    labels={formData.labels || []}
+                    onAddLabel={handleAddLabel}
+                    onRemoveLabel={handleRemoveLabel}
+                  />
+                </div>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex justify-end gap-3 mt-6 pt-6 border-t" style={{ borderColor: theme.colors.primary + '20' }}>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  disabled={isSubmitting}
+                  className="px-6 py-3 rounded-xl font-medium transition-all duration-200"
+                  style={{
+                    backgroundColor: theme.colors.primary + '10',
+                    color: theme.colors.secondary
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.primary + '20'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.primary + '10'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center gap-2 transform hover:scale-105"
+                  style={{
+                    backgroundColor: theme.colors.secondary,
+                    color: theme.colors.primary,
+                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSubmitting) {
+                      e.currentTarget.style.backgroundColor = theme.colors.primary
+                      e.currentTarget.style.color = theme.colors.secondary
+                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.3)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSubmitting) {
+                      e.currentTarget.style.backgroundColor = theme.colors.secondary
+                      e.currentTarget.style.color = theme.colors.primary
+                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)'
+                    }
+                  }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2" style={{ borderColor: theme.colors.primary }}></div>
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <CheckIcon className="h-5 w-5" />
+                      Create Task
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {/* Dependency Selector Modal */}
+      <DependencySelectorModal
+        isOpen={showDependencySelector}
+        onClose={() => setShowDependencySelector(false)}
+        onDependencySelected={handleAddDependency}
+        currentTaskId={0}
+        availableTasks={availableTasks}
+        projectMembers={selectedUsers.map(user => ({ 
+          id: user.id, 
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email?.split('@')[0] || 'Unknown', 
+          email: user.email || '', 
+          role: 'member' 
+        }))}
+      />
+    </>
+  )
+}
+
+export default CreateTaskModalModular
