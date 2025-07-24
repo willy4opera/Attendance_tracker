@@ -41,8 +41,6 @@ else
     exit 1
 fi
 
-log_info "Starting deployment to $ENVIRONMENT environment..."
-
 # Check if required files exist
 if [ ! -f "$ENV_FILE" ]; then
     log_error "$ENV_FILE not found!"
@@ -62,86 +60,3 @@ fi
 log_info "Creating deployment backup..."
 tar -czf "$BACKUP_DIR/deployment_backup_$TIMESTAMP.tar.gz" --exclude='node_modules' --exclude='.git' . || log_warn "Deployment backup failed"
 
-# Pull latest changes
-log_info "Pulling latest changes..."
-git pull origin main || {
-    log_error "Failed to pull latest changes"
-    exit 1
-}
-
-# Build and deploy services
-log_info "Building and starting services..."
-docker-compose -f $COMPOSE_FILE --env-file $ENV_FILE up -d --build || {
-    log_error "Failed to start services"
-    
-    # Rollback
-    log_info "Rolling back to previous version..."
-    docker-compose -f $COMPOSE_FILE down || true
-    
-    # Restore from backup if available
-    if [ -f "$BACKUP_DIR/deployment_backup_$TIMESTAMP.tar.gz" ]; then
-        log_info "Restoring from backup..."
-        tar -xzf "$BACKUP_DIR/deployment_backup_$TIMESTAMP.tar.gz"
-        docker-compose -f $COMPOSE_FILE --env-file $ENV_FILE up -d
-    fi
-    
-    exit 1
-}
-
-# Wait for services to be healthy
-log_info "Waiting for services to be healthy..."
-sleep 30
-
-# Run database migrations
-log_info "Running database migrations..."
-docker-compose -f $COMPOSE_FILE exec -T backend npm run migrate || log_warn "Migrations failed"
-
-# Health check
-log_info "Performing health check..."
-BACKEND_URL="http://localhost:3000"
-FRONTEND_URL="http://localhost:80"
-
-if [ "$ENVIRONMENT" = "production" ]; then
-    BACKEND_URL="https://api.yourdomain.com"
-    FRONTEND_URL="https://yourdomain.com"
-fi
-
-# Check backend health
-if curl -f -s "$BACKEND_URL/health" > /dev/null; then
-    log_info "Backend health check passed"
-else
-    log_error "Backend health check failed"
-    exit 1
-fi
-
-# Check frontend health
-if curl -f -s "$FRONTEND_URL/health" > /dev/null; then
-    log_info "Frontend health check passed"
-else
-    log_warn "Frontend health check failed"
-fi
-
-# Clean up old backups (keep last 5)
-log_info "Cleaning up old backups..."
-ls -t "$BACKUP_DIR"/db_backup_*.sql 2>/dev/null | tail -n +6 | xargs -r rm
-ls -t "$BACKUP_DIR"/deployment_backup_*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm
-
-# Clean up old Docker images
-log_info "Cleaning up old Docker images..."
-docker image prune -f
-
-log_info "Deployment to $ENVIRONMENT completed successfully!"
-
-# Send notification (customize as needed)
-if command -v curl &> /dev/null && [ -n "$WEBHOOK_URL" ]; then
-    curl -X POST -H 'Content-type: application/json' \
-        --data "{\"text\":\"✅ Attendance Tracker deployed to $ENVIRONMENT successfully!\"}" \
-        "$WEBHOOK_URL" || log_warn "Failed to send notification"
-fi
-
-log_info "Deployment summary:"
-log_info "- Environment: $ENVIRONMENT"
-log_info "- Timestamp: $TIMESTAMP"
-log_info "- Backend URL: $BACKEND_URL"
-log_info "- Frontend URL: $FRONTEND_URL"
-log_info "- Backup location: $BACKUP_DIR"

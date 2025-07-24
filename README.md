@@ -360,3 +360,36 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
   </p>
 </div>
 # Test SSH key deployment - Thu Jul 24 12:54:58 PM WAT 2025
+
+## 🛠️ Deployment Scripts
+
+The project includes several deployment and setup scripts:
+
+### Setup Scripts
+
+- **`scripts/setup-directories.sh`** - Creates all required upload directories
+- **`scripts/pre-deploy-check.sh`** - Runs pre-deployment health checks
+
+### Deployment Scripts
+
+- **`scripts/deploy/deploy.sh`** - Main deployment script
+- **`scripts/deploy-and-monitor.sh`** - Quick deploy with monitoring
+- **`.github/workflows/deploy.yml`** - Automated GitHub Actions deployment
+
+### Usage
+
+```bash
+# Setup directories (run once after cloning)
+./scripts/setup-directories.sh
+
+# Check if ready for deployment
+./scripts/pre-deploy-check.sh
+
+# Deploy to production
+./scripts/deploy/deploy.sh production
+
+# Quick deploy with monitoring
+./scripts/deploy-and-monitor.sh "Deployment message"
+```
+
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).

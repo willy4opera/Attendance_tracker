@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   # Use external Redis (port 6380) instead of system Redis (port 6379)
@@ -31,8 +30,9 @@ services:
       PORT: 5000
       DB_HOST: host.docker.internal
       DB_PORT: 5432
-      DB_NAME: attendance_tracker_prod
+      DB_NAME: attendance_tracker_pro
       DB_USER: Hhacker
+      DB_PASSWORD: ${DB_PASSWORD}
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: 24h

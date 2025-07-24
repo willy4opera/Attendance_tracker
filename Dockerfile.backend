@@ -1,34 +1,45 @@
 # Backend Dockerfile
-FROM node:18-alpine AS base
+FROM node:18-slim AS base
 
 # Install system dependencies
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     postgresql-client \
     curl \
-    bash
+    bash \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copy package files
 COPY backend/package*.json ./
 
-# Install dependencies (including all dependencies for production)
-RUN npm ci && npm cache clean --force
+# Install dependencies with optimizations
+RUN npm ci --only=production --no-audit --no-fund && npm cache clean --force
 
 # Copy application code
 COPY backend/ ./
 
-# Create uploads directory
-RUN mkdir -p uploads && chmod 755 uploads
+# Copy root-level config directory that contains app.config.json
+COPY config/ /config/
 
-# Create non-root user and set permissions
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001 -G nodejs
+# Create non-root user first
+RUN groupadd -g 1001 nodejs && useradd -r -u 1001 -g nodejs nodejs
+
+# Create ALL required upload directories with proper structure and permissions
+# The app will try to create these at runtime, so we need them pre-created
+RUN mkdir -p uploads/temp uploads/files uploads/images uploads/videos uploads/documents uploads/avatars
+RUN chmod -R 755 uploads
+
+# Set ownership of everything to nodejs user
 RUN chown -R nodejs:nodejs /app
+RUN chown -R nodejs:nodejs /config
+
+# Switch to non-root user
 USER nodejs
 
-# Health check on container's internal port 5000 (mapped to server:5000)
+# Health check on container's internal port 5000 - using correct endpoint
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:5000/health || curl -f http://localhost:5000/ || exit 1
+  CMD curl -f http://localhost:5000/api/v1/health || exit 1
 
 EXPOSE 5000
 

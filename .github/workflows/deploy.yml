@@ -48,20 +48,49 @@ jobs:
               cd '${{ env.DEPLOY_PATH }}'
               CURRENT_REMOTE=\$(git config --get remote.origin.url 2>/dev/null || echo 'none')
               EXPECTED_REMOTE='${{ env.REPO_URL }}.git'
-              if [ \"\$CURRENT_REMOTE\" != \"\$EXPECTED_REMOTE\" ]; then
-                git remote set-url origin \"\$EXPECTED_REMOTE\" 2>/dev/null || git remote add origin \"\$EXPECTED_REMOTE\"
+              if [ "\$CURRENT_REMOTE" != "\$EXPECTED_REMOTE" ]; then
+                git remote set-url origin "\$EXPECTED_REMOTE" 2>/dev/null || git remote add origin "\$EXPECTED_REMOTE"
               fi
             fi
+          "
+
+      - name: Setup Upload Directories
+        run: |
+          echo "📁 Creating required upload directories..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' &&
+            echo '📁 Creating all required upload directories...' &&
+            mkdir -p backend/uploads/{temp,files,images,videos,documents,avatars,attachments,debug,qrcodes} &&
+            chmod -R 755 backend/uploads &&
+            echo '📋 Directory structure:' &&
+            ls -la backend/uploads/ &&
+            echo '✅ All upload directories created successfully'
+          "
+
+      - name: Run Pre-deployment Checks
+        run: |
+          echo "🔍 Running pre-deployment checks..."
+          ssh root@77.37.121.27 "
+            cd '${{ env.DEPLOY_PATH }}' &&
+            echo '📋 Checking project structure...' &&
+            [ -f docker-compose.prod.yml ] && echo '✅ docker-compose.prod.yml found' || { echo '❌ docker-compose.prod.yml not found'; exit 1; } &&
+            echo '📋 Checking environment file...' &&
+            [ -f .env ] && echo '✅ .env file exists' || { echo '❌ .env file missing'; exit 1; } &&
+            echo '📋 Checking PostgreSQL connectivity...' &&
+            sudo -u postgres psql -c '\l' | grep -q 'attendance_tracker_pro' && echo '✅ Database exists' || { echo '❌ Database not found'; exit 1; } &&
+            echo '📋 Checking Docker...' &&
+            systemctl is-active --quiet docker && echo '✅ Docker is running' || { echo '❌ Docker not running'; exit 1; } &&
+            echo '✅ All pre-deployment checks passed!'
           "
 
       - name: Deploy Code
         run: |
           echo "🔄 Deploying latest changes..."
           ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' && 
-            git stash push -m 'Auto-stash before deployment' || true && 
-            git fetch origin ${{ github.ref_name }} &&
-            git pull origin ${{ github.ref_name }} && 
+            cd '${{ env.DEPLOY_PATH }}' && \
+            git stash push -m 'Auto-stash before deployment' || true && \
+            git fetch origin ${{ github.ref_name }} && \
+            git pull origin ${{ github.ref_name }} && \
             echo '✅ Code deployed successfully'
           "
 
@@ -70,7 +99,6 @@ jobs:
           echo "🔧 Creating environment files..."
           ssh root@77.37.121.27 "
             cd '${{ env.DEPLOY_PATH }}'
-            
             # Create backend .env file
             echo 'NODE_ENV=production' > backend/.env
             echo 'PORT=5000' >> backend/.env
@@ -120,7 +148,6 @@ jobs:
             echo 'SESSION_SECRET=${{ secrets.SESSION_SECRET }}' >> backend/.env
             echo 'GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}' >> backend/.env
             echo 'SENTRY_DSN=${{ secrets.SENTRY_DSN }}' >> backend/.env
-            
             # Create frontend .env file
             echo 'VITE_API_BASE_URL=/api/v1' > frontend/.env
             echo 'VITE_API_HOST=syncli.cloud' >> frontend/.env
@@ -150,7 +177,6 @@ jobs:
             echo 'VITE_FACEBOOK_REDIRECT_URI=https://syncli.cloud/register' >> frontend/.env
             echo 'VITE_GITHUB_REDIRECT_URI=https://syncli.cloud/register' >> frontend/.env
             echo 'VITE_LINKEDIN_REDIRECT_URI=https://syncli.cloud/register' >> frontend/.env
-            
             # Set permissions
             chmod 600 backend/.env frontend/.env
             echo '✅ Environment files created successfully'
@@ -176,7 +202,7 @@ jobs:
         run: |
           echo "🚀 Deploying backend service on port 5000..."
           ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' && 
+            cd '${{ env.DEPLOY_PATH }}' &&
             echo '📦 Building backend...' &&
             docker-compose -f docker-compose.prod.yml build backend &&
             echo '🔄 Starting backend service...' &&
@@ -188,7 +214,7 @@ jobs:
         run: |
           echo "🎨 Deploying frontend service on port 5173..."
           ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' && 
+            cd '${{ env.DEPLOY_PATH }}' &&
             echo '📦 Building frontend...' &&
             docker-compose -f docker-compose.prod.yml build frontend &&
             echo '🔄 Starting frontend service...' &&
@@ -200,15 +226,18 @@ jobs:
         run: |
           echo "🔍 Checking service health..."
           ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' && 
-            echo '=== Service Status ===' && 
-            docker-compose -f docker-compose.prod.yml ps && 
+            cd '${{ env.DEPLOY_PATH }}' &&
+            echo '=== Service Status ===' &&
+            docker-compose -f docker-compose.prod.yml ps &&
             echo '' &&
-            sleep 20 && 
+            sleep 20 &&
             echo '=== Port Status ===' &&
-            echo 'Backend (5000):' && netstat -tlpn | grep :5000 || echo 'Backend not bound' &&
-            echo 'Frontend (5173):' && netstat -tlpn | grep :5173 || echo 'Frontend not bound' &&
-            echo 'Redis (6380):' && netstat -tlpn | grep :6380 || echo 'Redis not bound' &&
+            echo 'Backend (5000):' &&
+            netstat -tlpn | grep :5000 || echo 'Backend not bound' &&
+            echo 'Frontend (5173):' &&
+            netstat -tlpn | grep :5173 || echo 'Frontend not bound' &&
+            echo 'Redis (6380):' &&
+            netstat -tlpn | grep :6380 || echo 'Redis not bound' &&
             echo '' &&
             echo '=== Direct Service Tests ===' &&
             echo 'Testing Backend (localhost:5000):' &&
@@ -226,7 +255,7 @@ jobs:
           echo "🏗️ Architecture:"
           echo "  - System Nginx: Reverse proxy (ports 80/443) → /etc/nginx/conf.d/syncli.cloud.conf"
           echo "  - Backend: Docker container (port 5000)"
-          echo "  - Frontend: Docker container (port 5173)" 
+          echo "  - Frontend: Docker container (port 5173)"
           echo "  - Redis: Docker container (port 6380)"
           echo "  - PostgreSQL: System service (port 5432)"
           echo ""
