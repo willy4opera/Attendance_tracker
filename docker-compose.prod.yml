@@ -10,6 +10,8 @@ services:
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
       - ./backups:/backups
+    networks:
+      - app-network
     deploy:
       resources:
         limits:
@@ -25,6 +27,8 @@ services:
       service: redis
     volumes:
       - redis_prod_data:/data
+    networks:
+      - app-network
     deploy:
       resources:
         limits:
@@ -41,6 +45,8 @@ services:
       DB_NAME: attendance_tracker_prod
     ports:
       - "5000:5000"
+    networks:
+      - app-network
     deploy:
       replicas: 2
       resources:
@@ -62,6 +68,8 @@ services:
     container_name: attendance_frontend_prod
     ports:
       - "80:80"
+    networks:
+      - app-network
     deploy:
       resources:
         limits:
@@ -73,6 +81,8 @@ services:
     extends:
       file: docker-compose.yml
       service: nginx-lb
+    networks:
+      - app-network
     profiles: [] # Remove profile restriction for production
 
 volumes:
@@ -80,5 +90,6 @@ volumes:
   redis_prod_data:
 
 networks:
-  default:
+  app-network:
+    driver: bridge
     name: attendance_prod_network
