@@ -8,13 +8,21 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '')
   
+  // Check if SSL certificates exist for local development
+  const sslKeyPath = path.resolve(__dirname, './localhost+2-key.pem')
+  const sslCertPath = path.resolve(__dirname, './localhost+2.pem')
+  const hasSSLCerts = fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)
+  
   return {
     plugins: [react()],
     server: {
-      https: {
-        key: fs.readFileSync(path.resolve(__dirname, './localhost+2-key.pem')),
-        cert: fs.readFileSync(path.resolve(__dirname, './localhost+2.pem')),
-      },
+      // Only use HTTPS if SSL certificates exist (local development)
+      ...(hasSSLCerts && {
+        https: {
+          key: fs.readFileSync(sslKeyPath),
+          cert: fs.readFileSync(sslCertPath),
+        },
+      }),
       port: 5173,
       host: true,
       // Improve WebSocket handling
