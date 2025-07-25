@@ -100,6 +100,35 @@ jobs:
           ssh root@77.37.121.27 "
             cd '${{ env.DEPLOY_PATH }}'
             # Create backend .env file
+            # Create docker-compose .env file
+            echo 'DB_NAME=${{ secrets.DB_NAME }}' > .env
+            echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
+            echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
+            echo 'JWT_SECRET=${{ secrets.JWT_SECRET }}' >> .env
+            echo 'JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}' >> .env
+            echo 'REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }}' >> .env
+            echo 'EMAIL_HOST=${{ secrets.EMAIL_HOST }}' >> .env
+            echo 'EMAIL_PORT=${{ secrets.EMAIL_PORT }}' >> .env
+            echo 'EMAIL_SECURE=${{ secrets.EMAIL_SECURE }}' >> .env
+            echo 'EMAIL_USER=${{ secrets.EMAIL_USER }}' >> .env
+            echo 'EMAIL_PASS=${{ secrets.EMAIL_PASS }}' >> .env
+            echo 'EMAIL_FROM=${{ secrets.EMAIL_FROM }}' >> .env
+            echo 'GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}' >> .env
+            echo 'GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}' >> .env
+            echo 'YOUTUBE_CLIENT_ID=${{ secrets.YOUTUBE_CLIENT_ID }}' >> .env
+            echo 'YOUTUBE_CLIENT_SECRET=${{ secrets.YOUTUBE_CLIENT_SECRET }}' >> .env
+            echo 'YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}' >> .env
+            echo 'FACEBOOK_APP_ID=${{ secrets.FACEBOOK_APP_ID }}' >> .env
+            echo 'FACEBOOK_APP_SECRET=${{ secrets.FACEBOOK_APP_SECRET }}' >> .env
+            echo 'GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}' >> .env
+            echo 'GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}' >> .env
+            echo 'LINKEDIN_CLIENT_ID=${{ secrets.LINKEDIN_CLIENT_ID }}' >> .env
+            echo 'LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}' >> .env
+            echo 'CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}' >> .env
+            echo 'CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}' >> .env
+            echo 'CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}' >> .env
+            chmod 600 .env
+
             echo 'NODE_ENV=production' > backend/.env
             echo 'PORT=5000' >> backend/.env
             echo 'DB_HOST=host.docker.internal' >> backend/.env
@@ -144,6 +173,9 @@ jobs:
             echo 'FACEBOOK_REDIRECT_URI=https://syncli.cloud/register' >> backend/.env
             echo 'LINKEDIN_CLIENT_ID=${{ secrets.LINKEDIN_CLIENT_ID }}' >> backend/.env
             echo 'LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}' >> backend/.env
+            echo 'GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}' >> backend/.env
+            echo 'GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}' >> backend/.env
+            echo 'GITHUB_REDIRECT_URI=https://syncli.cloud/register' >> backend/.env
             echo 'LINKEDIN_REDIRECT_URI=https://syncli.cloud/register' >> backend/.env
             echo 'SESSION_SECRET=${{ secrets.SESSION_SECRET }}' >> backend/.env
             echo 'GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}' >> backend/.env

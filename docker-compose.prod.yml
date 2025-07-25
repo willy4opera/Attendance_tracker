@@ -1,74 +1,61 @@
-
 services:
-  # Use external Redis (port 6380) instead of system Redis (port 6379)
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6380:6379"
-    volumes:
-      - redis_prod_data:/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-
-  # Backend connects to host PostgreSQL (single instance to avoid port conflicts)
+  # Backend uses host network to connect to host PostgreSQL and Redis
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    network_mode: host
     environment:
       NODE_ENV: production
-      PORT: 5000
-      DB_HOST: host.docker.internal
+      PORT: 5001
+      DB_HOST: localhost
       DB_PORT: 5432
-      DB_NAME: attendance_tracker_pro
-      DB_USER: Hhacker
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      REDIS_URL: redis://redis:6379
+      DB_DIALECT: postgres
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      REDIS_URL: redis://localhost:6379
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: 24h
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_COOKIE_EXPIRES_IN: 7
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_SECURE: ${EMAIL_SECURE}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASS: ${EMAIL_PASS}
+      EMAIL_FROM: ${EMAIL_FROM}
+      YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID}
+      YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
+      YOUTUBE_REDIRECT_URI: http://localhost:5000/api/v1/auth/youtube/callback
+      MAX_VIDEO_SIZE: 134217728
+      TEMP_UPLOAD_DIR: /tmp/video-uploads
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
-      EMAIL_HOST: ${EMAIL_HOST}
-      EMAIL_PORT: ${EMAIL_PORT}
-      EMAIL_USER: ${EMAIL_USER}
-      EMAIL_PASS: ${EMAIL_PASS}
-    ports:
-      - "5000:5000"
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - app-network
+      FRONTEND_URL: https://syncli.cloud
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: https://syncli.cloud/register
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
+      FACEBOOK_REDIRECT_URI: https://syncli.cloud/register
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      GITHUB_REDIRECT_URI: https://syncli.cloud/register
+      LINKEDIN_CLIENT_ID: ${LINKEDIN_CLIENT_ID}
+      LINKEDIN_CLIENT_SECRET: ${LINKEDIN_CLIENT_SECRET}
+      LINKEDIN_REDIRECT_URI: https://syncli.cloud/register
     volumes:
       - ./backend/uploads:/app/uploads
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - /tmp/video-uploads:/tmp/video-uploads
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
 
-  # Frontend serves on port 5173 (as expected by system nginx)
+  # Frontend serves on port 5173 with React Router support
   frontend:
     build:
       context: .
@@ -77,21 +64,4 @@ services:
         VITE_API_URL: https://syncli.cloud/api/v1
     ports:
       - "5173:80"
-    depends_on:
-      - backend
-    networks:
-      - app-network
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-
-volumes:
-  redis_prod_data:
-
-networks:
-  app-network:
-    driver: bridge
-    name: attendance_prod_network
