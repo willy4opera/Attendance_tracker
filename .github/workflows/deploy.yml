@@ -106,15 +106,15 @@ jobs:
             # Create backend .env file
             echo 'NODE_ENV=production' > backend/.env
             echo 'PORT=5000' >> backend/.env
-            echo 'DB_HOST=host.docker.internal' >> backend/.env
+            echo 'DB_HOST=localhost' >> backend/.env
             echo 'DB_PORT=5432' >> backend/.env
             echo 'DB_NAME=${{ secrets.DB_NAME }}' >> backend/.env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> backend/.env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> backend/.env
             echo 'DB_DIALECT=postgres' >> backend/.env
-            echo 'REDIS_HOST=redis' >> backend/.env
+            echo 'REDIS_HOST=localhost' >> backend/.env
             echo 'REDIS_PORT=6379' >> backend/.env
-            echo 'REDIS_URL=redis://redis:6379' >> backend/.env
+            echo 'REDIS_URL=redis://localhost:6379' >> backend/.env
             echo 'JWT_SECRET=${{ secrets.JWT_SECRET }}' >> backend/.env
             echo 'JWT_EXPIRES_IN=24h' >> backend/.env
             echo 'REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }}' >> backend/.env
@@ -201,8 +201,14 @@ jobs:
             [ -f docker-compose.prod.yml ] && echo '✅ docker-compose.prod.yml found' || { echo '❌ docker-compose.prod.yml not found'; exit 1; } &&
             echo '📋 Checking environment file...' &&
             [ -f .env ] && echo '✅ .env file exists' || { echo '❌ .env file missing'; exit 1; } &&
+            echo '📋 Checking PostgreSQL system service...' &&
+            systemctl is-active --quiet postgresql && echo '✅ PostgreSQL service is running' || { echo '❌ PostgreSQL service not running'; exit 1; } &&
             echo '📋 Checking PostgreSQL connectivity...' &&
             sudo -u postgres psql -c '\l' | grep -q 'attendance_tracker_pro' && echo '✅ Database exists' || { echo '❌ Database not found'; exit 1; } &&
+            echo '📋 Checking Redis system service...' &&
+            systemctl is-active --quiet redis-server && echo '✅ Redis service is running' || { echo '❌ Redis service not running'; exit 1; } &&
+            echo '📋 Checking Redis connectivity...' &&
+            redis-cli ping | grep -q PONG && echo '✅ Redis is responding' || { echo '❌ Redis not responding'; exit 1; } &&
             echo '📋 Checking Docker...' &&
             systemctl is-active --quiet docker && echo '✅ Docker is running' || { echo '❌ Docker not running'; exit 1; } &&
             echo '✅ All pre-deployment checks passed!'
@@ -219,24 +225,9 @@ jobs:
             echo '✅ Code deployed successfully'
           "
 
-      - name: Start Redis Service
-        run: |
-          echo "🔍 Starting Redis service..."
-          ssh root@77.37.121.27 "
-            cd '${{ env.DEPLOY_PATH }}' &&
-            if netstat -tlpn | grep ':6380' > /dev/null; then
-              echo '✅ Redis is already running on port 6380'
-            else
-              echo '🚀 Starting Redis service...'
-              docker-compose -f docker-compose.prod.yml up -d redis
-              sleep 5
-            fi &&
-            docker-compose -f docker-compose.prod.yml ps redis
-          "
-
       - name: Deploy Backend Service
         run: |
-          echo "🚀 Deploying backend service on port 5000..."
+          echo "🚀 Deploying backend service (uses host network to connect to system PostgreSQL and Redis)..."
           ssh root@77.37.121.27 "
             cd '${{ env.DEPLOY_PATH }}' &&
             echo '📦 Building backend...' &&
@@ -263,23 +254,35 @@ jobs:
           echo "🔍 Checking service health..."
           ssh root@77.37.121.27 "
             cd '${{ env.DEPLOY_PATH }}' &&
-            echo '=== Service Status ===' &&
+            echo '=== Docker Services Status ===' &&
             docker-compose -f docker-compose.prod.yml ps &&
+            echo '' &&
+            echo '=== System Services Status ===' &&
+            echo 'PostgreSQL:' &&
+            systemctl is-active postgresql || echo 'PostgreSQL not active' &&
+            echo 'Redis:' &&
+            systemctl is-active redis-server || echo 'Redis not active' &&
             echo '' &&
             sleep 20 &&
             echo '=== Port Status ===' &&
-            echo 'Backend (5000):' &&
-            netstat -tlpn | grep :5000 || echo 'Backend not bound' &&
+            echo 'Backend (5001):' &&
+            netstat -tlpn | grep :5001 || echo 'Backend not bound on 5001' &&
             echo 'Frontend (5173):' &&
             netstat -tlpn | grep :5173 || echo 'Frontend not bound' &&
-            echo 'Redis (6380):' &&
-            netstat -tlpn | grep :6380 || echo 'Redis not bound' &&
+            echo 'PostgreSQL (5432):' &&
+            netstat -tlpn | grep :5432 || echo 'PostgreSQL not bound' &&
+            echo 'Redis (6379):' &&
+            netstat -tlpn | grep :6379 || echo 'Redis not bound' &&
             echo '' &&
             echo '=== Direct Service Tests ===' &&
-            echo 'Testing Backend (localhost:5000):' &&
-            curl -f http://localhost:5000/health 2>/dev/null && echo '  Backend Health: ✅' || curl -f http://localhost:5000/ 2>/dev/null && echo '  Backend Root: ✅' || echo '  Backend: ❌' &&
+            echo 'Testing Backend:' &&
+            curl -f http://localhost:5001/health 2>/dev/null && echo '  Backend Health: ✅' || curl -f http://localhost:5001/ 2>/dev/null && echo '  Backend Root: ✅' || echo '  Backend: ❌' &&
             echo 'Testing Frontend (localhost:5173):' &&
             curl -f http://localhost:5173/ 2>/dev/null && echo '  Frontend: ✅' || echo '  Frontend: ❌' &&
+            echo 'Testing PostgreSQL:' &&
+            sudo -u postgres psql -c 'SELECT 1;' > /dev/null && echo '  PostgreSQL: ✅' || echo '  PostgreSQL: ❌' &&
+            echo 'Testing Redis:' &&
+            redis-cli ping | grep -q PONG && echo '  Redis: ✅' || echo '  Redis: ❌' &&
             echo '✅ Health checks completed'
           "
 
@@ -290,12 +293,13 @@ jobs:
           echo ""
           echo "🏗️ Architecture:"
           echo "  - System Nginx: Reverse proxy (ports 80/443) → /etc/nginx/conf.d/syncli.cloud.conf"
-          echo "  - Backend: Docker container (port 5000)"
+          echo "  - Backend: Docker container (host network, port 5001)"
           echo "  - Frontend: Docker container (port 5173)"
-          echo "  - Redis: Docker container (port 6380)"
           echo "  - PostgreSQL: System service (port 5432)"
+          echo "  - Redis: System service (port 6379)"
           echo ""
-          echo "🌐 Traffic Flow: syncli.cloud → System Nginx → Backend(5000) & Frontend(5173)"
+          echo "🌐 Traffic Flow: syncli.cloud → System Nginx → Backend(5001) & Frontend(5173)"
+          echo "🔗 Backend connects to: PostgreSQL(localhost:5432) & Redis(localhost:6379)"
           echo ""
           if [ "${{ job.status }}" = "success" ]; then
             echo "✅ Deployment successful!"
