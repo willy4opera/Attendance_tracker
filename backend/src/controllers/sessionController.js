@@ -19,7 +19,7 @@ exports.createSession = catchAsync(async (req, res, next) => {
     tags, 
     category,
     expectedAttendees,
-    maxAttendees,
+    capacity,
     location
   } = req.body;
 
@@ -36,7 +36,7 @@ exports.createSession = catchAsync(async (req, res, next) => {
     category,
     expectedAttendees: expectedAttendees || [],
     expectedAttendeesCount: expectedAttendees ? expectedAttendees.length : 0,
-    maxAttendees,
+    capacity,
     location
   });
 
@@ -226,6 +226,7 @@ exports.getAllSessions = catchAsync(async (req, res, next) => {
 });
 
 // Get session statistics
+// Get session statistics
 exports.getSessionStatistics = catchAsync(async (req, res, next) => {
   const { startDate, endDate } = req.query;
   
@@ -236,35 +237,82 @@ exports.getSessionStatistics = catchAsync(async (req, res, next) => {
     if (endDate) where.sessionDate[Op.lte] = new Date(endDate);
   }
 
-  // Get various statistics
+  // Get total sessions count
   const totalSessions = await Session.count({ where });
-  const upcomingSessions = await Session.count({
-    where: {
-      ...where,
-      sessionDate: { [Op.gte]: new Date() },
-      status: 'scheduled'
-    }
-  });
 
-  // Sessions by status
-  const statusCounts = await Session.findAll({
+  // Get sessions by status with proper status calculation
+  const now = new Date();
+  const allSessions = await Session.findAll({
     where,
-    attributes: [
-      'status',
-      [Sequelize.fn('COUNT', Sequelize.col('status')), 'count']
-    ],
-    group: ['status'],
+    attributes: ['id', 'status', 'sessionDate', 'startTime', 'endTime', 'totalAttendance', 'facilitatorId', 'expectedAttendeesCount', 'capacity'],
     raw: true
   });
 
-  // Format the statistics
+  // Calculate real-time status for each session
+  let activeCount = 0;
+  let upcomingCount = 0;
+  let completedCount = 0;
+  let totalAttendees = 0;
+  let facilitatorSessions = 0;
+  let totalCapacity = 0;
+
+  allSessions.forEach(session => {
+    // Calculate real status based on current time
+    const sessionDate = new Date(session.sessionDate);
+    // Handle different date formats from raw query
+    const sessionDateStr = session.sessionDate instanceof Date 
+      ? session.sessionDate.toISOString() 
+      : session.sessionDate.toString();
+    const startTime = new Date(`${sessionDateStr.split("T")[0]}T${session.startTime}`);
+    const endTime = new Date(`${sessionDateStr.split("T")[0]}T${session.endTime}`);
+    
+    let realStatus;
+    if (session.status === 'cancelled') {
+      realStatus = 'cancelled';
+    } else if (now >= startTime && now <= endTime) {
+      realStatus = 'active';
+      activeCount++;
+    } else if (now < startTime) {
+      realStatus = 'upcoming';
+      upcomingCount++;
+    } else {
+      realStatus = 'completed';
+      completedCount++;
+    }
+
+    // Count attendance
+    totalAttendees += session.totalAttendance || 0;
+    
+    // Count capacity (use capacity, fallback to expectedAttendeesCount)
+    totalCapacity += session.capacity || session.expectedAttendeesCount || 0;
+    
+    // Count facilitator sessions (if user is logged in)
+    if (req.user && session.facilitatorId === req.user.id) {
+      facilitatorSessions++;
+    }
+  });
+
+  // Calculate rates
+  const averageAttendance = totalSessions > 0 ? (totalAttendees / totalSessions) : 0;
+  const attendanceRate = totalCapacity > 0 ? ((totalAttendees / totalCapacity) * 100) : 0;
+
   const statistics = {
     total: totalSessions,
-    upcoming: upcomingSessions,
-    byStatus: statusCounts.reduce((acc, curr) => {
-      acc[curr.status] = parseInt(curr.count);
-      return acc;
-    }, {})
+    active: activeCount,
+    upcoming: upcomingCount,
+    completed: completedCount,
+    cancelled: allSessions.filter(s => s.status === 'cancelled').length,
+    attendance: {
+      totalAttendees,
+      averageAttendance: Math.round(averageAttendance * 100) / 100,
+      attendanceRate: Math.round(attendanceRate * 100) / 100
+    },
+    facilitation: req.user ? {
+      sessionsCreated: facilitatorSessions,
+      totalParticipants: allSessions
+        .filter(s => s.facilitatorId === req.user.id)
+        .reduce((sum, s) => sum + (s.totalAttendance || 0), 0)
+    } : undefined
   };
 
   res.status(200).json({
@@ -274,8 +322,6 @@ exports.getSessionStatistics = catchAsync(async (req, res, next) => {
     }
   });
 });
-
-// Search sessions with autocomplete
 exports.searchSessions = catchAsync(async (req, res, next) => {
   const { q, limit = 10 } = req.query;
   
@@ -517,6 +563,84 @@ exports.removeFileFromSession = catchAsync(async (req, res, next) => {
     status: 'success',
     data: {
       files: updatedFiles
+    }
+  });
+});
+
+// Get sessions by status with pagination
+exports.getSessionsByStatus = catchAsync(async (req, res, next) => {
+  const { status, page = 1, limit = 10 } = req.query;
+  const offset = (page - 1) * limit;
+
+  let where = {};
+  const now = new Date();
+
+  // If specific status requested, we need to filter by real-time status
+  if (status && status !== "all") {
+    // For database-stored statuses
+    if (status === "cancelled") {
+      where.status = "cancelled";
+    } else {
+      // For time-based statuses, we need to calculate in application
+      // Get all non-cancelled sessions first, then filter by time
+      where.status = { [Op.ne]: "cancelled" };
+    }
+  }
+
+  const allSessions = await Session.findAll({
+    where,
+    include: [
+      {
+        model: User,
+        as: "facilitator",
+        attributes: ["id", "firstName", "lastName", "email"]
+      }
+    ],
+    attributes: {
+      include: [
+        [Sequelize.literal('(SELECT COUNT(*) FROM "Attendances" WHERE "Attendances"."session_id" = "Session"."id")'), "attendanceCount"]
+      ]
+    },
+    order: [["createdAt", "DESC"]]
+  });
+
+  // Filter by real-time status if needed
+  let filteredSessions = allSessions;
+  if (status && status !== "all" && status !== "cancelled") {
+    filteredSessions = allSessions.filter(session => {
+    // Handle different date formats from raw query
+    const sessionDateStr = session.sessionDate instanceof Date 
+      ? session.sessionDate.toISOString() 
+      : session.sessionDate.toString();
+    const startTime = new Date(`${sessionDateStr.split("T")[0]}T${session.startTime}`);
+    const endTime = new Date(`${sessionDateStr.split("T")[0]}T${session.endTime}`);
+      
+      if (status === "active") {
+        return now >= startTime && now <= endTime;
+      } else if (status === "upcoming") {
+        return now < startTime;
+      } else if (status === "completed") {
+        return now > endTime;
+      }
+      return false;
+    });
+  }
+
+  // Apply pagination to filtered results
+  const paginatedSessions = filteredSessions.slice(offset, offset + parseInt(limit));
+  const totalCount = filteredSessions.length;
+
+  res.status(200).json({
+    status: "success",
+    results: paginatedSessions.length,
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(totalCount / limit),
+      totalResults: totalCount
+    },
+    data: {
+      sessions: paginatedSessions
     }
   });
 });

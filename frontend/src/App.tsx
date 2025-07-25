@@ -137,6 +137,10 @@ const router = createBrowserRouter(
           element: <SessionAttendance />,
         },
         {
+          path: 'attendance/sessions/:sessionId',
+          element: <SessionAttendance />,
+        },
+        {
           path: 'qr-scanner',
           element: <QRCodeScanner />,
         },

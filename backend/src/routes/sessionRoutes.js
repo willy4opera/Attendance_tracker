@@ -11,6 +11,7 @@ router.use(protect);
 // Public session routes (for authenticated users)
 router.get('/', sessionController.getAllSessions);
 router.get('/statistics/summary', sessionController.getSessionStatistics);
+router.get("/by-status", sessionController.getSessionsByStatus);
 router.get('/search/autocomplete', sessionController.searchSessions);
 router.get('/:sessionId', sessionController.getSessionDetails);
 

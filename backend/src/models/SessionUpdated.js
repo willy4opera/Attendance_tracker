@@ -33,7 +33,7 @@ const sessionAdditions = {
     defaultValue: false,
   },
   
-  maxAttendees: {
+  capacity: {
     type: DataTypes.INTEGER,
     allowNull: true,
   },

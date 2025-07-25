@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -25,27 +26,32 @@ import { SessionStatsCards, SessionTabs } from '../../components/SessionStats';
 import CreateSessionModal from './CreateSessionModal';
 
 interface SessionListProps {
+  allSessions?: Session[];
+  stats?: SessionStats;
   sessions?: Session[];
   loading?: boolean;
   error?: string | null;
   onRefresh?: () => void;
 }
 
-const SessionList: React.FC<SessionListProps> = ({ 
+const SessionList: React.FC<SessionListProps> = ({
+  allSessions = [],
+  stats: propStats, 
   sessions = [], 
   loading = false, 
   error = null,
   onRefresh 
 }) => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') || 'all');
   const [showFilters, setShowFilters] = useState(false);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
-  const [stats, setStats] = useState<SessionStats>({
+  const [stats, setStats] = useState<SessionStats>(propStats || {
     total: 0,
     active: 0,
     upcoming: 0,
@@ -68,11 +74,15 @@ const SessionList: React.FC<SessionListProps> = ({
 
   // Calculate stats from sessions
   useEffect(() => {
-    if (sessions && sessions.length > 0) {
+    if (propStats) {
+      // Use stats passed from parent (calculated from all sessions)
+      setStats(propStats);
+    } else if (sessions && sessions.length > 0) {
+      // Fallback: calculate stats from visible sessions only
       const calculatedStats = calculateStats(sessions);
       setStats(calculatedStats);
     }
-  }, [sessions, user]);
+  }, [sessions, user, propStats]);
 
   const calculateStats = (sessionList: Session[]): SessionStats => {
     const now = new Date();
@@ -128,6 +138,8 @@ const SessionList: React.FC<SessionListProps> = ({
 
   const handleTabChange = (tab: string) => {
     setStatusFilter(tab);
+    // Update URL params to trigger data fetch in parent component
+    setSearchParams({ status: tab, page: "1" });
   };
 
   const getStatusBadge = (status: string) => {

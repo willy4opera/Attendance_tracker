@@ -10,7 +10,7 @@ import type {
 } from '../types/session';
 
 class SessionService {
-  // Get all sessions with filters
+  // Get all sessions with filters (keeping for backward compatibility)
   async getAllSessions(filters?: SessionFilters): Promise<SessionsResponse> {
     try {
       const params = new URLSearchParams();
@@ -27,6 +27,33 @@ class SessionService {
     } catch (error) {
       const axiosError = error as AxiosError<{ message: string }>;
       throw new Error(axiosError.response?.data?.message || 'Failed to fetch sessions');
+    }
+  }
+
+  // NEW: Get session statistics (counts only)
+  async getSessionStatistics(): Promise<any> {
+    try {
+      const response = await api.get('/sessions/statistics/summary');
+      return response.data.data.statistics;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message: string }>;
+      throw new Error(axiosError.response?.data?.message || 'Failed to fetch session statistics');
+    }
+  }
+
+  // NEW: Get sessions by status with pagination
+  async getSessionsByStatus(status: string, page: number = 1, limit: number = 10): Promise<SessionsResponse> {
+    try {
+      const params = new URLSearchParams();
+      params.append('status', status);
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
+      
+      const response = await api.get(`/sessions/by-status?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message: string }>;
+      throw new Error(axiosError.response?.data?.message || 'Failed to fetch sessions by status');
     }
   }
 
@@ -112,7 +139,7 @@ class SessionService {
     }
   }
 
-  // Get session status
+  // Get session status (keeping for backward compatibility)
   getSessionStatus(session: Session): 'scheduled' | 'ongoing' | 'completed' | 'cancelled' {
     if (session.status === 'cancelled') return 'cancelled';
     
@@ -150,7 +177,7 @@ class SessionService {
   }
 
   // Helper to format time string
-  private formatTime(timeStr: string): string {
+  formatTime(timeStr: string): string {
     if (!timeStr) return "";
     
     try {
@@ -216,38 +243,16 @@ class SessionService {
     }
   }
 
-  // Get session statistics
+  // Get session statistics (backward compatibility - redirects to new endpoint)
   async getSessionStats(): Promise<any> {
-    try {
-      const response = await api.get("/sessions/stats");
-      return response.data.data;
-    } catch (error) {
-      const axiosError = error as AxiosError<{ message: string }>;
-      throw new Error(axiosError.response?.data?.message || "Failed to fetch session stats");
-    }
+    return this.getSessionStatistics();
   }
 
-  // Get filtered sessions
+  // Get filtered sessions (backward compatibility - redirects to new endpoint)
   async getFilteredSessions(filter: string, filters?: any): Promise<any> {
-    try {
-      const params = new URLSearchParams();
-      
-      // Add filter type
-      if (filter !== "all") {
-        params.append("status", filter);
-      }
-      
-      // Add other filters
-      if (filters?.page) params.append("page", filters.page.toString());
-      if (filters?.limit) params.append("limit", filters.limit.toString());
-      if (filters?.search) params.append("search", filters.search);
-      
-      const response = await api.get(`/sessions?${params.toString()}`);
-      return response.data;
-    } catch (error) {
-      const axiosError = error as AxiosError<{ message: string }>;
-      throw new Error(axiosError.response?.data?.message || "Failed to fetch filtered sessions");
-    }
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 10;
+    return this.getSessionsByStatus(filter, page, limit);
   }
 }
 

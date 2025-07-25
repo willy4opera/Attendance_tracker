@@ -39,7 +39,7 @@ const getFacebookAuthUrl = (req, res) => {
 
     const params = new URLSearchParams({
       client_id: FACEBOOK_APP_ID,
-      redirect_uri: 'https://localhost:5173/register',
+      redirect_uri: process.env.FACEBOOK_REDIRECT_URI,
       scope: 'email,public_profile',
       response_type: 'code',
       auth_type: 'rerequest',
@@ -99,7 +99,7 @@ const facebookAuth = async (req, res) => {
           params: {
             client_id: FACEBOOK_APP_ID,
             client_secret: FACEBOOK_APP_SECRET,
-            redirect_uri: 'https://localhost:5173/register',
+            redirect_uri: process.env.FACEBOOK_REDIRECT_URI,
             code: code
           }
         });

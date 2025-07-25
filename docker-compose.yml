@@ -12,7 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/migrations:/docker-entrypoint-initdb.d
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "5433:5432"
     networks:
       - app-network
     healthcheck:
@@ -43,7 +43,7 @@ services:
       dockerfile: Dockerfile.backend
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      PORT: ${PORT:-3000}
+      PORT: ${PORT:-5000}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-attendance_tracker}
@@ -60,7 +60,7 @@ services:
       EMAIL_USER: ${EMAIL_USER}
       EMAIL_PASS: ${EMAIL_PASS}
     ports:
-      - "${PORT:-3000}:3000"
+      - "${PORT:-5000}:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,9 +78,9 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5000}
     ports:
-      - "${FRONTEND_PORT:-80}:80"
+      - "${FRONTEND_PORT:-5173}:80"
     depends_on:
       - backend
     networks:
