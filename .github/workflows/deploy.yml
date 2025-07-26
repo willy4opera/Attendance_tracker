@@ -25,6 +25,16 @@ jobs:
     if: github.ref == 'refs/heads/main'
     
     steps:
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add SSH known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 77.37.121.27 >> ~/.ssh/known_hosts
+
       - name: Deploy Code and Services
         run: |
           echo "🚀 Starting deployment to production..."
