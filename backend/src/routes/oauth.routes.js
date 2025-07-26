@@ -21,3 +21,9 @@ router.post('/linkedin', authController.linkedinAuth);
 router.get('/linkedin/url', authController.getLinkedInUrl);
 
 module.exports = router;
+
+// Add Google OAuth callback route for backend handling
+const { googleAuthCallback, getGoogleAuthUrlWithCallback } = require('../controllers/auth/googleAuthCallback');
+
+router.get('/google/callback', googleAuthCallback);
+router.get('/google/url-callback', getGoogleAuthUrlWithCallback);

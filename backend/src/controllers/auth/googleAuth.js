@@ -19,11 +19,47 @@ function oauthLog(message, data = null) {
   console.log(message, data || '');
 }
 
+// Function to determine the correct redirect URI based on environment
+function getRedirectUri() {
+  const envRedirectUri = process.env.GOOGLE_REDIRECT_URI;
+  const nodeEnv = process.env.NODE_ENV;
+  const frontendUrl = process.env.FRONTEND_URL;
+  
+  oauthLog('Determining redirect URI:', {
+    nodeEnv,
+    envRedirectUri,
+    frontendUrl
+  });
+  
+  // If NODE_ENV is development or the redirect URI contains localhost, use it as-is
+  if (nodeEnv === 'development' || (envRedirectUri && envRedirectUri.includes('localhost'))) {
+    oauthLog('Using development/localhost redirect URI:', envRedirectUri);
+    return envRedirectUri;
+  }
+  
+  // For production, respect the GOOGLE_REDIRECT_URI if set
+  if (nodeEnv === 'production' && envRedirectUri) {
+    oauthLog('Using production redirect URI from env:', envRedirectUri);
+    return envRedirectUri;
+  }
+  
+  // Fallback to frontend URL + /login if GOOGLE_REDIRECT_URI not set
+  if (nodeEnv === 'production' && frontendUrl && !envRedirectUri) {
+    const productionUri = `${frontendUrl}/login`;
+    oauthLog('Using production redirect URI (fallback):', productionUri);
+    return productionUri;
+  }
+  
+  // Final fallback to env variable
+  oauthLog('Using fallback redirect URI:', envRedirectUri);
+  return envRedirectUri;
+}
+
 // Initialize Google OAuth client
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
+  getRedirectUri()
 );
 
 // In-memory store for processed OAuth codes to prevent reuse
@@ -48,135 +84,186 @@ const googleAuth = async (req, res) => {
   oauthLog('🔐 Google OAuth Request received:', {
     hasToken: !!req.body.token,
     hasCode: !!req.body.code,
-    codePrefix: req.body.code ? req.body.code.substring(0, 20) + '...' : null,
-    timestamp: new Date().toISOString()
+    headers: req.headers,
+    body: req.body
   });
-  
+
   try {
     let { token, code } = req.body;
     
-    // Decode the authorization code if it's URL encoded
-    if (code) {
-      const decodedCode = decodeURIComponent(code);
-      oauthLog('🔍 Code comparison:', {
-        original: code.substring(0, 30) + '...',
-        decoded: decodedCode.substring(0, 30) + '...',
-        needsDecoding: code !== decodedCode
-      });
-      code = decodedCode;
-    }
-
-    // Backend deduplication: Check if this code has already been processed
-    if (code && processedCodes.has(code)) {
-      oauthLog('⚠️ OAuth code already processed on backend, rejecting duplicate request');
-      const ageMs = Date.now() - processedCodes.get(code);
-      oauthLog(`   Code age: ${ageMs}ms`);
+    if (!token && !code) {
+      oauthLog('❌ Missing both token and code');
       return res.status(400).json({
         success: false,
-        message: 'The authorization code has already been used. Please try signing in again.',
-        error: 'duplicate_code'
+        message: 'Either Google ID token or authorization code is required'
       });
-    }
-
-    // Mark code as being processed with timestamp
-    if (code) {
-      processedCodes.set(code, Date.now());
-      oauthLog('🔒 OAuth code marked as processed on backend');
-      oauthLog(`   Total codes in memory: ${processedCodes.size}`);
     }
 
     let payload;
-
+    
     if (token) {
-      // Handle ID token from Google Sign-In button
-      const ticket = await client.verifyIdToken({
-        idToken: token,
-        audience: process.env.GOOGLE_CLIENT_ID
-      });
-      payload = ticket.getPayload();
+      // Handle ID token from Google Sign-In
+      oauthLog('🔍 Verifying Google ID token...');
+      try {
+        const ticket = await client.verifyIdToken({
+          idToken: token,
+          audience: process.env.GOOGLE_CLIENT_ID
+        });
+        payload = ticket.getPayload();
+        oauthLog('✅ ID token verified successfully');
+      } catch (error) {
+        oauthLog('❌ ID token verification failed: ' + error.message);
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid Google token'
+        });
+      }
     } else if (code) {
+      // Decode the authorization code if it's URL encoded
+      const decodedCode = decodeURIComponent(code);
+      
+      oauthLog('🔍 Code processing:', {
+        original: code,
+        decoded: decodedCode,
+        needsDecoding: code !== decodedCode
+      });
+      
+      // Use the decoded code
+      code = decodedCode;
+      
       // Handle authorization code from OAuth flow
       oauthLog('🔄 Exchanging code for tokens with Google...');
       oauthLog('📊 OAuth Client Configuration:', {
         clientId: process.env.GOOGLE_CLIENT_ID,
-        redirectUri: process.env.GOOGLE_REDIRECT_URI,
+        redirectUri: getRedirectUri(),
         hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET
       });
       
       let tokens;
       try {
-        const tokenResponse = await client.getToken(code);
-        tokens = tokenResponse.tokens;
-        oauthLog('✅ Successfully got tokens from Google');
-        oauthLog('🎫 Token details:', {
-          hasIdToken: !!tokens.id_token,
-          hasAccessToken: !!tokens.access_token,
-          hasRefreshToken: !!tokens.refresh_token,
-          expiresIn: tokens.expiry_date
+        // Update client redirect URI for this request
+        client._redirectUri = getRedirectUri();
+        
+        const { tokens: googleTokens } = await client.getToken(code);
+        tokens = googleTokens;
+        oauthLog('✅ Successfully exchanged code for tokens');
+      } catch (error) {
+        oauthLog('❌ Token exchange failed: ' + error.message);
+        oauthLog('📝 Full error details:', error.response?.data || error);
+        
+        // Log the full error stack for debugging
+        oauthLog('📝 Full error stack:', error.stack);
+        
+        // Check if this code was already used
+        if (processedCodes.has(code)) {
+          oauthLog('⚠️ Duplicate code detected - already processed');
+          return res.status(400).json({
+            success: false,
+            message: 'This authorization code has already been used',
+            error: 'duplicate_code'
+          });
+        }
+        
+        // Specific error handling
+        if (error.message && error.message.includes('invalid_grant')) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid or expired authorization code'
+          });
+        }
+        
+        if (error.message && error.message.includes('redirect_uri_mismatch')) {
+          oauthLog('❌ Redirect URI mismatch detected');
+          return res.status(400).json({
+            success: false,
+            message: 'OAuth redirect URI mismatch. Please contact support.'
+          });
+        }
+        
+        return res.status(400).json({
+          success: false,
+          message: 'Failed to exchange authorization code'
         });
-        client.setCredentials(tokens);
-      } catch (tokenError) {
-        oauthLog('❌ Token exchange failed: ' + tokenError.message);
-        oauthLog('📝 Full error details:', tokenError.response?.data || tokenError);
-        throw tokenError;
       }
-
-      // Verify the ID token from the response
-      const ticket = await client.verifyIdToken({
-        idToken: tokens.id_token,
-        audience: process.env.GOOGLE_CLIENT_ID
-      });
-      payload = ticket.getPayload();
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: 'Google token or authorization code is required'
-      });
+      
+      // Mark this code as processed
+      processedCodes.set(code, Date.now());
+      oauthLog('📝 Added code to processed set. Total processed codes:', processedCodes.size);
+      
+      // Get user info using the access token
+      oauthLog('🔍 Fetching user info from Google...');
+      try {
+        client.setCredentials(tokens);
+        const userInfoResponse = await client.request({
+          url: 'https://www.googleapis.com/oauth2/v3/userinfo'
+        });
+        payload = userInfoResponse.data;
+        oauthLog('✅ User info retrieved successfully:', {
+          email: payload.email,
+          name: payload.name
+        });
+      } catch (error) {
+        oauthLog('❌ Failed to get user info: ' + error.message);
+        // Remove the code from processed set since it failed
+        processedCodes.delete(code);
+        oauthLog('🗑️ Removed failed OAuth code from processed set');
+        return res.status(400).json({
+          success: false,
+          message: 'Failed to get user information from Google'
+        });
+      }
     }
 
+    // Extract user information
     const { email, name, given_name, family_name, picture, sub: googleId } = payload;
+    
+    oauthLog('👤 Processing user data:', { email, name, googleId });
 
     // Check if user exists
     let user = await User.findOne({ where: { email } });
-
-    if (!user) {
+    
+    if (user) {
+      oauthLog('✅ Existing user found');
+      // Update Google ID if not set
+      if (!user.googleId) {
+        user.googleId = googleId;
+        await user.save();
+        oauthLog('✅ Updated user with Google ID');
+      }
+    } else {
+      oauthLog('🆕 Creating new user...');
       // Create new user
       user = await User.create({
         email,
-        firstName: given_name || name.split(' ')[0],
-        lastName: family_name || name.split(' ').slice(1).join(' '),
-        profilePicture: picture,
+        firstName: given_name || name?.split(' ')[0] || '',
+        lastName: family_name || name?.split(' ').slice(1).join(' ') || '',
+        profileImage: picture,
         googleId,
-        isEmailVerified: true,
-        provider: 'google',
-        password: null // No password for social login
+        isEmailVerified: true, // Google accounts are pre-verified
+        role: 'user'
       });
-    } else {
-      // Update existing user with Google info if not already linked
-      if (!user.googleId) {
-        await user.update({
-          googleId,
-          profilePicture: user.profilePicture || picture,
-          isEmailVerified: true
-        });
-      }
+      oauthLog('✅ New user created successfully');
     }
 
-    // Generate JWT token
+    // Generate tokens
     const authToken = generateToken(user);
     
-    // Generate refresh token
+    // Get the refresh token expiry from env or use default
+    const refreshTokenExpiry = process.env.JWT_REFRESH_EXPIRES_IN || 
+                              process.env.REFRESH_TOKEN_EXPIRES_IN || 
+                              '7d';
+    
     const refreshToken = jwt.sign(
-      { id: user.id },
+      { userId: user.id },
       process.env.JWT_REFRESH_SECRET,
-      { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN }
+      { expiresIn: refreshTokenExpiry }
     );
 
-    oauthLog('✅ Google OAuth successful for user: ' + user.email);
-    
+    oauthLog('✅ Google auth successful for user:', user.email);
+
+    // Return success response
     res.status(200).json({
       success: true,
-      message: 'Google authentication successful',
       token: authToken,
       refreshToken,
       data: {
@@ -185,39 +272,26 @@ const googleAuth = async (req, res) => {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          profilePicture: user.profilePicture,
-          role: user.role
+          profileImage: user.profileImage,
+          role: user.role,
+          isEmailVerified: user.isEmailVerified
         }
       }
     });
+
   } catch (error) {
-    oauthLog('❌ Google auth error: ' + error.message);
-    oauthLog('📝 Full error stack:', error.stack);
+    oauthLog('❌ Google auth error:', error);
+    console.error('Google auth error:', error);
     
-    // Clean up the processed code on error so it can be retried
+    // Remove the code from processed set on error
     if (req.body.code) {
       processedCodes.delete(req.body.code);
       oauthLog('🗑️ Removed failed OAuth code from processed set');
     }
     
-    // Handle specific Google OAuth errors
-    let errorMessage = 'Google authentication failed';
-    let statusCode = 500;
-    
-    if (error.message && error.message.includes('invalid_grant')) {
-      errorMessage = 'The authorization code has expired or was already used. Please try signing in again.';
-      statusCode = 400;
-    } else if (error.message && error.message.includes('invalid_client')) {
-      errorMessage = 'Google OAuth configuration error. Please contact support.';
-      statusCode = 500;
-    } else if (error.message && error.message.includes('redirect_uri_mismatch')) {
-      errorMessage = 'OAuth redirect URI mismatch. Please contact support.';
-      statusCode = 500;
-    }
-    
-    res.status(statusCode).json({
+    res.status(500).json({
       success: false,
-      message: errorMessage,
+      message: 'Authentication failed',
       error: error.message
     });
   }
@@ -226,83 +300,58 @@ const googleAuth = async (req, res) => {
 /**
  * Handle Google OAuth callback
  */
-const handleGoogleAuth = async (code) => {
+const handleGoogleAuth = async (req, res) => {
+  oauthLog('🌐 Google OAuth callback received');
+  
   try {
+    const { code, error } = req.query;
+    
+    if (error) {
+      oauthLog('❌ Google auth callback error: ' + error);
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=${error}`);
+    }
+    
+    if (!code) {
+      oauthLog('❌ No authorization code in callback');
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_code`);
+    }
+    
+    oauthLog('🔄 Processing callback with code...');
+    
     // Exchange code for tokens
-    const { tokens } = await client.getToken(code);
-    client.setCredentials(tokens);
-
-    // Verify the ID token
-    const ticket = await client.verifyIdToken({
-      idToken: tokens.id_token,
-      audience: process.env.GOOGLE_CLIENT_ID
+    const authResult = await googleAuth({ body: { code } }, {
+      status: () => ({ json: (data) => data }),
+      json: (data) => data
     });
     
-    const payload = ticket.getPayload();
-    const { email, name, given_name, family_name, picture, sub: googleId } = payload;
-
-    // Check if user exists
-    let user = await User.findOne({ where: { email } });
-
-    if (!user) {
-      // Create new user
-      user = await User.create({
-        email,
-        firstName: given_name || name.split(' ')[0],
-        lastName: family_name || name.split(' ').slice(1).join(' '),
-        profilePicture: picture,
-        googleId,
-        isEmailVerified: true,
-        provider: 'google',
-        password: null
-      });
+    if (authResult.success) {
+      oauthLog('✅ Callback processed successfully');
+      // Redirect to frontend with tokens
+      const redirectUrl = `${process.env.FRONTEND_URL}/auth/success?token=${authResult.token}&refreshToken=${authResult.refreshToken}`;
+      return res.redirect(redirectUrl);
     } else {
-      // Update existing user
-      if (!user.googleId) {
-        await user.update({
-          googleId,
-          profilePicture: user.profilePicture || picture,
-          isEmailVerified: true
-        });
-      }
+      oauthLog('❌ Callback processing failed');
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
     }
-
-    // Generate tokens
-    const authToken = generateToken(user);
-    const refreshToken = jwt.sign(
-      { id: user.id },
-      process.env.JWT_REFRESH_SECRET,
-      { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN }
-    );
-
-    return {
-      token: authToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        profilePicture: user.profilePicture,
-        role: user.role
-      }
-    };
+    
   } catch (error) {
     oauthLog('❌ Google auth callback error: ' + error.message);
-    throw error;
+    console.error('Google OAuth callback error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/login?error=server_error`);
   }
 };
 
 /**
- * Clear processed OAuth codes (for debugging)
+ * Clear processed codes (admin endpoint)
  */
 const clearProcessedCodes = (req, res) => {
-  const size = processedCodes.size;
+  const oldSize = processedCodes.size;
   processedCodes.clear();
-  oauthLog(`🧹 Manually cleared ${size} OAuth codes from memory`);
+  oauthLog(`🧹 Manually cleared ${oldSize} processed OAuth codes`);
+  
   res.status(200).json({
     success: true,
-    message: `Cleared ${size} OAuth codes from memory`
+    message: `Cleared ${oldSize} processed codes`
   });
 };
 
@@ -322,7 +371,7 @@ const getGoogleAuthUrl = (req, res) => {
     access_type: 'offline',
     prompt: 'consent', // Force fresh authorization code every time
     scope: scopes,
-    redirect_uri: process.env.GOOGLE_REDIRECT_URI
+    redirect_uri: getRedirectUri()
   };
 
   // Add state parameter if provided
@@ -330,6 +379,8 @@ const getGoogleAuthUrl = (req, res) => {
     authUrlParams.state = state;
   }
 
+  // Update client redirect URI for URL generation
+  client._redirectUri = getRedirectUri();
   const authUrl = client.generateAuthUrl(authUrlParams);
 
   res.status(200).json({
